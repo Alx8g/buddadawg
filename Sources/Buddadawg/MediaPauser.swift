@@ -125,6 +125,14 @@ final class MediaPauser {
         DispatchQueue.global().asyncAfter(deadline: .now() + 0.35) { finishOnce() }
     }
 
+    /// A deliberate gesture (triple-tap fn) starts a real dictation right after the
+    /// gesture's micro-dictation already toggled pause+resume. The cooldown exists to
+    /// absorb OUR OWN pause's helper lag — it must not blind the dictation that the
+    /// gesture actually produces, so the App clears it when the gesture fires.
+    func clearBrowserCooldown() {
+        lock.withLock { browserCooldownUntil = .distantPast }
+    }
+
     /// Resumes playback if (and only if) this session paused it and no newer dictation
     /// has started since. Safe to call repeatedly.
     func resumeIfPausedByUs(session mine: Int) {
