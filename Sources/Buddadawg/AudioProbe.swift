@@ -27,7 +27,7 @@ enum AudioProbe {
         }
         defer { AudioHardwareDestroyProcessTap(tapID) }
 
-        guard let aggregateID = makeAggregate(tapID: tapID) else {
+        guard let aggregateID = makeAggregate(tapUUID: tapDescription.uuid) else {
             log("probe: aggregate device creation failed")
             return nil
         }
@@ -64,7 +64,8 @@ enum AudioProbe {
     }
 
     /// Aggregate device wrapping the tap, mirroring Apple's process-tap recipe.
-    private static func makeAggregate(tapID: AudioObjectID) -> AudioObjectID? {
+    /// Taps join an aggregate by UUID through the tap list, not as sub-devices.
+    private static func makeAggregate(tapUUID: UUID) -> AudioObjectID? {
         var defaultOutput = AudioDeviceID(kAudioObjectUnknown)
         var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
                                               mScope: kAudioObjectPropertyScopeGlobal,
@@ -83,7 +84,11 @@ enum AudioProbe {
             kAudioAggregateDeviceIsStackedKey: 0,
             kAudioAggregateDeviceTapAutoStartKey: 1,
             kAudioAggregateDeviceMainSubDeviceKey: uid,
-            kAudioAggregateDeviceSubDeviceListKey: [tapID],
+            kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: uid]],
+            kAudioAggregateDeviceTapListKey: [[
+                kAudioSubTapDriftCompensationKey: 1,
+                kAudioSubTapUIDKey: tapUUID.uuidString,
+            ]],
         ]
         var aggregateID = AudioObjectID(kAudioObjectUnknown)
         guard AudioHardwareCreateAggregateDevice(description as CFDictionary, &aggregateID) == noErr else { return nil }
