@@ -27,6 +27,8 @@ The install downloads ~640 MB of models and pre-compiles them for the Neural Eng
 - Menu bar → **Recent Dictations** re-pastes a recent result (handy when a paste missed).
 - **Keep Audio for Recovery** (menu bar, off by default) stores the last dictations as local WAVs for 7 days. **Stored Audio** re-transcribes one through the loaded engine and pastes it — the file is only deleted on success. **Delete Stored Audio** wipes the vault.
 - Fix words two ways: select the correct spelling in any app → **Add Selection to Dictionary…**, or edit `~/.config/buddadawg/dictionary` directly via **Edit Dictionary…** (`tail scale => Tailscale`), seeded on first launch.
+- **Snippets**: dictate exactly `snippet <trigger>` to paste canned text — `~/.config/buddadawg/snippets`, `trigger => text` per line, `\n` for line breaks. Edit via **Edit Snippets…**.
+- While you talk, a floating HUD shows a live partial transcript (re-decoded ~every 2 s); the final pass on fn release is still authoritative.
 - Escape hatch: `defaults write co.alex.buddadawg engine bark` forces the verbatim engine.
 
 ## Test

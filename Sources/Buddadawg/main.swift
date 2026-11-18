@@ -59,6 +59,15 @@ final class App: NSObject, NSApplicationDelegate {
     /// local LLM cleanup pass before pasting. The model pre-warms while the user
     /// speaks so the pass overlaps nothing.
     private var smartDictation = false
+    /// Streaming preview: while a normal dictation records, re-decode the in-progress
+    /// audio every ~1.8 s and show the partial text in PartialHUD. Cosmetic only —
+    /// finish() still runs the authoritative final transcription. Decodes chain
+    /// serially and skip while the final pass is running.
+    let partialHUD = PartialHUD()
+    private var partialTimer: Timer?
+    private var partialTail: Task<Void, Never>?
+    private var partialBusy = false
+    private var partialEpoch = 0
     /// Triple-tap veto data: the hotkey detects the tap rhythm; the App confirms the
     /// clip between tap1-2 wasn't real speech. Gesture clips contain fn-key clicks
     /// (peak ~0.02-0.03) but no voice (speech peaks 0.1+), so the threshold sits at 0.08.
@@ -93,6 +102,7 @@ final class App: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(true, forKey: "loginItemConfigured")
         }
         Dictionary.seedIfNeeded()
+        Snippets.ensureFile()
         DispatchQueue.global(qos: .utility).async { AudioVault.prune() }
         buildMenu()
         overlay.level = { [recorder] in recorder.level }
@@ -116,6 +126,7 @@ final class App: NSObject, NSApplicationDelegate {
         hotkey.onCancel = { [self] in
             if commandMode {
                 log("command mode cancelled by another key")
+                stopPartialStreaming()
                 _ = recorder.stop()
                 commandMode = false
                 hotkey.externalCapture = false
@@ -127,6 +138,7 @@ final class App: NSObject, NSApplicationDelegate {
                 return
             }
             log("cancelled by another key")
+            stopPartialStreaming()
             _ = recorder.stop()
             smartDictation = false
             overlay.smart = false
@@ -187,6 +199,7 @@ final class App: NSObject, NSApplicationDelegate {
             setStatus("Mic error: \(error.localizedDescription)")
             return
         }
+        partialEpoch += 1
         mediaEpoch += 1
         let epoch = mediaEpoch
         mediaInFlight.insert(epoch)
@@ -198,6 +211,52 @@ final class App: NSObject, NSApplicationDelegate {
                     MediaPauser.shared.resumeIfPausedByUs(session: token)
                     mediaTokens.removeValue(forKey: epoch)
                 }
+            }
+        }
+        startPartialStreaming()
+    }
+
+    /// Kicks the ~1.8 s partial-decode cadence for the current recording. Re-armed on
+    /// every capture start; stopped by stopPartialStreaming on finish/cancel.
+    private func startPartialStreaming() {
+        stopPartialStreaming()
+        partialTimer = Timer.scheduledTimer(withTimeInterval: 1.8, repeats: true) { [weak self] _ in
+            self?.partialTick()
+        }
+    }
+
+    private func stopPartialStreaming() {
+        partialTimer?.invalidate()
+        partialTimer = nil
+        partialEpoch += 1
+        partialHUD.hide()
+    }
+
+    /// One streaming step: snapshot the in-progress audio and queue a decode behind
+    /// any partial still running. Clean-model only — the Bark fallback stays batch.
+    /// Stale results are dropped via partialEpoch so a decode from a previous
+    /// recording can never overwrite a new dictation's preview.
+    private func partialTick() {
+        guard recorder.isRecording, !commandMode, !transcriptionInFlight,
+              !partialBusy, let transcriber = cleanTranscriber else { return }
+        let epoch = partialEpoch
+        let audio = recorder.snapshot()
+        guard audio.count > 24000 else { return }  // under ~1.5 s: nothing worth decoding
+        partialBusy = true
+        let previous = partialTail
+        partialTail = Task { [self] in
+            _ = await previous?.result
+            defer { Task { @MainActor in self.partialBusy = false } }
+            do {
+                let raw = try await transcriber.transcribe(audio)
+                let text = DictationFormatter.format(Dictionary.apply(raw))
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                await MainActor.run { [self] in
+                    guard epoch == partialEpoch, recorder.isRecording else { return }
+                    partialHUD.show(text)
+                }
+            } catch {
+                // Partial decodes are best-effort; a failure just means no preview update.
             }
         }
     }
@@ -263,6 +322,7 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     func finish(send: Bool) {
+        stopPartialStreaming()
         let audio = recorder.stop()
         lastDictationSeconds = Double(audio.count) / 16000
         lastDictationEnd = Date()
@@ -335,11 +395,15 @@ final class App: NSObject, NSApplicationDelegate {
                 } else { raw = "" }
                 let formatted = DictationFormatter.format(Dictionary.apply(raw))
                 let parsed = SpokenCommands.parse(formatted)
-                var text = parsed.text
+                // Whole-utterance snippet trigger ("snippet <name>") expands to canned
+                // text before anything else touches it; canned text skips LLM cleanup.
+                let snippet = parsed.shouldDiscard ? nil : Snippets.match(parsed.text)
+                var text = snippet ?? parsed.text
+                if snippet != nil { log("snippet expanded") }
                 log("transcribed \(text.count) chars in \(Int(Date().timeIntervalSince(started) * 1000)) ms (\(engineName))\(llmCleanup ? " [smart]" : "")")
                 // Smart Dictation: polish the transcript with the on-device LLM. Any
                 // failure falls back to the raw transcript — cleanup is best-effort.
-                if llmCleanup, !parsed.shouldDiscard, !text.isEmpty {
+                if llmCleanup, snippet == nil, !parsed.shouldDiscard, !text.isEmpty {
                     let cleanStart = Date()
                     if let cleaned = await RewriteEngine.cleanup(text) {
                         log("cleanup: \(text.count) -> \(cleaned.count) chars in \(Int(Date().timeIntervalSince(cleanStart) * 1000)) ms")
@@ -421,6 +485,7 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     private func finishCommand() {
+        stopPartialStreaming()
         let audio = recorder.stop()
         commandMode = false
         hotkey.externalCapture = false
@@ -527,6 +592,7 @@ final class App: NSObject, NSApplicationDelegate {
         vaultDeleteItem = NSMenuItem(title: "Delete Stored Audio", action: #selector(deleteVaultAudio), keyEquivalent: "")
         menu.addItem(vaultDeleteItem)
         menu.addItem(NSMenuItem(title: "Edit Dictionary…", action: #selector(editDictionary), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Edit Snippets…", action: #selector(editSnippets), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Add Selection to Dictionary…", action: #selector(addSelectionToDictionary), keyEquivalent: ""))
         let commandItem = NSMenuItem(title: "Command Selection… (Apple Intelligence)", action: #selector(commandSelection), keyEquivalent: "")
         commandItem.isEnabled = RewriteEngine.isAvailable
@@ -674,6 +740,10 @@ final class App: NSObject, NSApplicationDelegate {
     @objc func editDictionary() {
         Dictionary.seedIfNeeded()
         NSWorkspace.shared.open(Dictionary.file)
+    }
+
+    @objc func editSnippets() {
+        Snippets.edit()
     }
 
     @MainActor @objc func addSelectionToDictionary() {

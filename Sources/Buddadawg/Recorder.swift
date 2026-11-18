@@ -62,6 +62,13 @@ final class Recorder {
         isRecording = true
     }
 
+    /// Copy of everything captured so far — for the streaming partial decode.
+    /// Called off the audio thread; the copy is O(n) but dictations are short enough
+    /// that a ~2 MB snapshot every couple of seconds is nothing.
+    func snapshot() -> [Float] {
+        lock.withLock { samples }
+    }
+
     /// Stops the mic and returns everything captured since `start`.
     func stop() -> [Float] {
         guard isRecording else { return [] }
