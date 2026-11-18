@@ -146,7 +146,13 @@ final class MediaPauser {
             let v = (pausedByUs, method); pausedByUs = false; return v
         }
         if didBrowser {
-            Self.resumeToggle(what: "browser video")
+            // Browser video is toggle-controlled: the pause and resume toggles are a
+            // pair, so the resume must fire unconditionally. Gating on outputIsRunning
+            // broke both ways — a paused WebKit helper keeps the output device flagged
+            // running, which dropped every resume AND let a manual pause get toggled
+            // into playback with no way back.
+            Self.postPlayPauseKey()
+            log("media: browser video toggle-resume")
         }
         guard wasPaused else { return }
         switch via {
@@ -183,12 +189,23 @@ final class MediaPauser {
     /// gated on the browser being frontmost — dictating into another app shouldn't leave
     /// the video blaring.
     private static func browserVideoLikelyPlaying() -> Bool {
-        outputProcesses().contains { proc in
+        // Candidates: browser-owned processes flagged as running output. The flag
+        // alone can't tell "playing" from "paused but holding the device open", so
+        // confirm with a real PCM probe; if the probe is unavailable (nil), trust
+        // the flag as before.
+        let candidates = outputProcesses().filter { proc in
             let bundle = resolvedBundle(pid: proc.pid, bundle: proc.bundle)
             return browserBundles.contains { base in
                 bundle == base || bundle.hasPrefix(base + ".helper")
             }
         }
+        guard !candidates.isEmpty else { return false }
+        guard let peak = AudioProbe.outputPeak(processObjectIDs: candidates.map(\.obj)) else {
+            return true
+        }
+        let playing = peak > 0.005
+        log("media: browser probe peak=\(String(format: "%.4f", peak)) -> \(playing ? "playing" : "silent")")
+        return playing
     }
 
     /// WebKit browsers (Safari, ZigZag, Orion…) play media audio through shared
@@ -229,7 +246,7 @@ final class MediaPauser {
     /// Processes currently running output audio IO, per the HAL process object list.
     /// This is the reliable "something is playing" signal on macOS versions that gate
     /// MediaRemote queries. Our own process never counts (it only records input).
-    private static func outputProcesses() -> [(pid: pid_t, bundle: String)] {
+    private static func outputProcesses() -> [(pid: pid_t, bundle: String, obj: AudioObjectID)] {
         var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyProcessObjectList,
                                               mScope: kAudioObjectPropertyScopeGlobal,
                                               mElement: kAudioObjectPropertyElementMain)
@@ -244,7 +261,7 @@ final class MediaPauser {
             _ = AudioObjectGetPropertyData(obj, &a, 0, nil, &s, &v)
             return v
         }
-        var out: [(pid: pid_t, bundle: String)] = []
+        var out: [(pid: pid_t, bundle: String, obj: AudioObjectID)] = []
         for id in ids where uint(id, kAudioProcessPropertyIsRunningOutput) != 0 {
             let pid = pid_t(bitPattern: uint(id, kAudioProcessPropertyPID))
             var a = AudioObjectPropertyAddress(mSelector: kAudioProcessPropertyBundleID, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
@@ -253,7 +270,7 @@ final class MediaPauser {
             _ = withUnsafeMutablePointer(to: &bid) { AudioObjectGetPropertyData(id, &a, 0, nil, &s, $0) }
             let bundle = bid as String
             if bundle == "co.alex.buddadawg" { continue }
-            out.append((pid: pid, bundle: bundle))
+            out.append((pid: pid, bundle: bundle, obj: id))
         }
         return out
     }
