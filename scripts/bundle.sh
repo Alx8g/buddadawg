@@ -15,6 +15,8 @@ cp -R Models/BarkEncoderANE.mlpackage Models/decoder.bin Models/decoder.json Mod
 cp -R ModelsClean "$APP/Contents/Resources/"
 cp NOTICE "$APP/Contents/Resources/"
 cp Resources/butterdog.gif "$APP/Contents/Resources/"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/"
+cp THIRD-PARTY-NOTICES.md "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -27,6 +29,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleVersion</key><string>2</string>
   <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>LSUIElement</key><true/>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>NSMicrophoneUsageDescription</key><string>Buddadawg listens only between fn taps, and transcribes on this Mac.</string>
 </dict></plist>
 PLIST
