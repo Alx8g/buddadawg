@@ -20,12 +20,17 @@ enum AudioProbe {
         let tapDescription = CATapDescription(stereoMixdownOfProcesses: processObjectIDs)
         tapDescription.name = "buddadawg-probe"
         tapDescription.isPrivate = true
-        guard AudioHardwareCreateProcessTap(tapDescription, &tapID) == noErr, tapID != kAudioObjectUnknown else {
+        let tapStatus = AudioHardwareCreateProcessTap(tapDescription, &tapID)
+        guard tapStatus == noErr, tapID != kAudioObjectUnknown else {
+            log("probe: AudioHardwareCreateProcessTap failed (\(tapStatus))")
             return nil
         }
         defer { AudioHardwareDestroyProcessTap(tapID) }
 
-        guard let aggregateID = makeAggregate(tapID: tapID) else { return nil }
+        guard let aggregateID = makeAggregate(tapID: tapID) else {
+            log("probe: aggregate device creation failed")
+            return nil
+        }
         defer { AudioHardwareDestroyAggregateDevice(aggregateID) }
 
         let box = PeakBox()
@@ -46,8 +51,12 @@ enum AudioProbe {
             return noErr
         }
         let context = Unmanaged.passUnretained(box).toOpaque()
-        guard AudioDeviceCreateIOProcID(aggregateID, ioProc, context, &ioProcID) == noErr,
-              AudioDeviceStart(aggregateID, ioProcID) == noErr else { return nil }
+        let procStatus = AudioDeviceCreateIOProcID(aggregateID, ioProc, context, &ioProcID)
+        let startStatus = procStatus == noErr ? AudioDeviceStart(aggregateID, ioProcID) : procStatus
+        guard procStatus == noErr, startStatus == noErr else {
+            log("probe: IOProc create/start failed (\(procStatus)/\(startStatus))")
+            return nil
+        }
         Thread.sleep(forTimeInterval: duration)
         AudioDeviceStop(aggregateID, ioProcID)
         if let ioProcID { AudioDeviceDestroyIOProcID(aggregateID, ioProcID) }
