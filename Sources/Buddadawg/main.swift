@@ -105,6 +105,7 @@ final class App: NSObject, NSApplicationDelegate {
         }
         Dictionary.seedIfNeeded()
         Snippets.ensureFile()
+        AppRules.ensureFile()
         DispatchQueue.global(qos: .utility).async { AudioVault.prune() }
         buildMenu()
         overlay.level = { [recorder] in recorder.level }
@@ -449,7 +450,7 @@ final class App: NSObject, NSApplicationDelegate {
                 await MainActor.run { [self] in
                     transcriptionInFlight = false
                     if let epoch { resumeMedia(epoch: epoch) }
-                    let enter = autoSendEnter || send || sendOnNextPaste
+                    let enter = send || sendOnNextPaste || (autoSendEnter && AppRules.allowsSend())
                     sendOnNextPaste = false
                     if shouldDiscard {
                         log("discarded by spoken command")
@@ -627,6 +628,7 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(vaultDeleteItem)
         menu.addItem(NSMenuItem(title: "Edit Dictionary…", action: #selector(editDictionary), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Edit Snippets…", action: #selector(editSnippets), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Edit App Rules…", action: #selector(editAppRules), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Show Onboarding…", action: #selector(showOnboarding), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Add Selection to Dictionary…", action: #selector(addSelectionToDictionary), keyEquivalent: ""))
         let commandItem = NSMenuItem(title: "Command Selection… (Apple Intelligence)", action: #selector(commandSelection), keyEquivalent: "")
@@ -779,6 +781,10 @@ final class App: NSObject, NSApplicationDelegate {
 
     @objc func editSnippets() {
         Snippets.edit()
+    }
+
+    @objc func editAppRules() {
+        AppRules.edit()
     }
 
     @MainActor @objc func addSelectionToDictionary() {
