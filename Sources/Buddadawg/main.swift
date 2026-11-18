@@ -409,6 +409,10 @@ final class App: NSObject, NSApplicationDelegate {
         let previous = transcriptionTail
         let task = Task { [self] in
             _ = await previous?.result
+            // A partial decode may still be inside AsrManager when fn releases;
+            // AsrManager isn't documented reentrant, so let the partial chain drain
+            // first — the final pass is authoritative anyway.
+            _ = await partialTail?.result
             if saveToVault, !secureInput { AudioVault.save(audio) }  // no-op unless the user opted in
             let started = Date()
             do {
@@ -419,16 +423,20 @@ final class App: NSObject, NSApplicationDelegate {
                     raw = try await Task.detached(priority: .userInitiated) { try barkTranscriber.transcribe(audio) }.value
                 } else { raw = "" }
                 let formatted = DictationFormatter.format(Dictionary.apply(raw))
-                let parsed = SpokenCommands.parse(formatted)
                 // Whole-utterance snippet trigger ("snippet <name>") expands to canned
-                // text before anything else touches it; canned text skips LLM cleanup.
-                let snippet = parsed.shouldDiscard ? nil : Snippets.match(parsed.text)
-                var text = snippet ?? parsed.text
+                // text. Matched on the formatted text BEFORE SpokenCommands.parse —
+                // otherwise a trigger ending in "new line"/"period" etc. would have its
+                // tail eaten as a command and never match. Canned text skips command
+                // parsing and LLM cleanup.
+                let snippet = Snippets.match(formatted)
+                let parsed = snippet == nil ? SpokenCommands.parse(formatted) : nil
+                let shouldDiscard = parsed?.shouldDiscard ?? false
+                var text = snippet ?? parsed?.text ?? formatted
                 if snippet != nil { log("snippet expanded") }
                 log("transcribed \(text.count) chars in \(Int(Date().timeIntervalSince(started) * 1000)) ms (\(engineName))\(llmCleanup ? " [smart]" : "")")
                 // Smart Dictation: polish the transcript with the on-device LLM. Any
                 // failure falls back to the raw transcript — cleanup is best-effort.
-                if llmCleanup, snippet == nil, !parsed.shouldDiscard, !text.isEmpty {
+                if llmCleanup, snippet == nil, !shouldDiscard, !text.isEmpty {
                     let cleanStart = Date()
                     if let cleaned = await RewriteEngine.cleanup(text) {
                         log("cleanup: \(text.count) -> \(cleaned.count) chars in \(Int(Date().timeIntervalSince(cleanStart) * 1000)) ms")
@@ -443,7 +451,7 @@ final class App: NSObject, NSApplicationDelegate {
                     if let epoch { resumeMedia(epoch: epoch) }
                     let enter = autoSendEnter || send || sendOnNextPaste
                     sendOnNextPaste = false
-                    if parsed.shouldDiscard {
+                    if shouldDiscard {
                         log("discarded by spoken command")
                         overlay.show(.cancelled)
                         return

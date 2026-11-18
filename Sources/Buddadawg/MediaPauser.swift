@@ -71,15 +71,26 @@ final class MediaPauser {
                 || ((pidNow ?? 0) > 0 && outputRunning && playingNow != false)
                 || (halMedia && outputRunning)
             if playing {
-                var used: Method = .mediaKey
-                var sent: Bool?
-                if let send = self.sendCommandFn {
-                    sent = send(1, nil)  // kMRPause
-                    if sent == true { used = .mediaRemote }
+                // Claim before toggling: a second overlapping pause query (fast
+                // re-dictation inside the ~0.35 s window) must not send a second
+                // toggle that would cancel this one out.
+                var claimed = false
+                lock.withLock {
+                    if !pausedByUs && !browserPausedByUs { pausedByUs = true; claimed = true }
                 }
-                if used == .mediaKey { Self.postPlayPauseKey() }
-                self.lock.withLock { self.pausedByUs = true; self.method = used }
-                log("media: paused (isPlaying=\(String(describing: playingNow)), pid=\(String(describing: pidNow)), outputRunning=\(outputRunning), hal=[\(halDesc)], via \(used), sendResult=\(String(describing: sent)))")
+                if claimed {
+                    var used: Method = .mediaKey
+                    var sent: Bool?
+                    if let send = self.sendCommandFn {
+                        sent = send(1, nil)  // kMRPause
+                        if sent == true { used = .mediaRemote }
+                    }
+                    if used == .mediaKey { Self.postPlayPauseKey() }
+                    self.lock.withLock { self.method = used }
+                    log("media: paused (isPlaying=\(String(describing: playingNow)), pid=\(String(describing: pidNow)), outputRunning=\(outputRunning), hal=[\(halDesc)], via \(used), sendResult=\(String(describing: sent)))")
+                } else {
+                    log("media: already paused by us; skipping duplicate pause")
+                }
             } else if (pidNow ?? 0) > 0 || playingNow != nil || halMedia {
                 log("media: not playing (isPlaying=\(String(describing: playingNow)), pid=\(String(describing: pidNow)), outputRunning=\(outputRunning), hal=[\(halDesc)]); leaving playback alone")
             }
@@ -97,9 +108,16 @@ final class MediaPauser {
                 npPausedBrowser = Self.browserBundles.contains { bid.hasPrefix($0) }
             }
             if !playing, !npPausedBrowser, Self.browserVideoLikelyPlaying() {
-                Self.postPlayPauseKey()
-                self.lock.withLock { self.browserPausedByUs = true }
-                log("media: browser video toggle-pause (hal=[\(halDesc)])")
+                var claimed = false
+                lock.withLock {
+                    if !browserPausedByUs && !pausedByUs { browserPausedByUs = true; claimed = true }
+                }
+                if claimed {
+                    Self.postPlayPauseKey()
+                    log("media: browser video toggle-pause (hal=[\(halDesc)])")
+                } else {
+                    log("media: already paused by us; skipping duplicate browser toggle")
+                }
             } else if !playing, npPausedBrowser {
                 log("media: browser helper output present but vetoed (npPausedBrowser=true)")
             }
@@ -128,25 +146,18 @@ final class MediaPauser {
             let v = (pausedByUs, method); pausedByUs = false; return v
         }
         if didBrowser {
-            Self.postPlayPauseKey()
-            log("media: browser video toggle-resume")
+            Self.resumeToggle(what: "browser video")
         }
         guard wasPaused else { return }
         switch via {
         case .mediaRemote:
             if let send = sendCommandFn, send(0, nil) {  // kMRPlay: harmless if already playing
                 log("media: resumed via MediaRemote")
-            } else if !Self.outputIsRunning() {
-                Self.postPlayPauseKey()
-                log("media: resumed via media key (MediaRemote play failed)")
+            } else {
+                Self.resumeToggle(what: "media key (MediaRemote play failed)")
             }
         case .mediaKey:
-            if !Self.outputIsRunning() {
-                Self.postPlayPauseKey()
-                log("media: resumed via media key")
-            } else {
-                log("media: output already running; not toggling playPause")
-            }
+            Self.resumeToggle(what: "media key")
         }
     }
 
@@ -259,6 +270,27 @@ final class MediaPauser {
         addr.mSelector = kAudioDevicePropertyDeviceIsRunningSomewhere
         guard AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &running) == noErr else { return false }
         return running != 0
+    }
+
+    /// Toggle-based resume (media key / browser video): send the paired toggle only
+    /// when nothing else holds the output device — otherwise we'd pause whatever the
+    /// user started meanwhile. If something transient (a notification sound) is
+    /// holding output right now, retry once after a few seconds.
+    private static func resumeToggle(what: String) {
+        if !outputIsRunning() {
+            postPlayPauseKey()
+            log("media: resumed via \(what)")
+            return
+        }
+        log("media: output already running; \(what) resume deferred 3 s")
+        DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
+            if !outputIsRunning() {
+                postPlayPauseKey()
+                log("media: resumed via \(what) (deferred)")
+            } else {
+                log("media: output still running; \(what) resume dropped")
+            }
+        }
     }
 
     private static func postPlayPauseKey() {
