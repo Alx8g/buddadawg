@@ -63,28 +63,15 @@ enum AudioProbe {
         return box.peak
     }
 
-    /// Aggregate device wrapping the tap, mirroring Apple's process-tap recipe.
-    /// Taps join an aggregate by UUID through the tap list, not as sub-devices.
+    /// Tap-only aggregate device: taps join by UUID through the tap list. No physical
+    /// sub-device, so a duplex output's microphone can't be measured as playback.
     private static func makeAggregate(tapUUID: UUID) -> AudioObjectID? {
-        var defaultOutput = AudioDeviceID(kAudioObjectUnknown)
-        var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
-                                              mScope: kAudioObjectPropertyScopeGlobal,
-                                              mElement: kAudioObjectPropertyElementMain)
-        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
-        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &defaultOutput) == noErr else { return nil }
-        var uid: CFString = "" as CFString
-        addr.mSelector = kAudioDevicePropertyDeviceUID
-        size = UInt32(MemoryLayout<CFString>.size)
-        guard withUnsafeMutablePointer(to: &uid, { AudioObjectGetPropertyData(defaultOutput, &addr, 0, nil, &size, $0) }) == noErr else { return nil }
-
         let description: [String: Any] = [
             kAudioAggregateDeviceNameKey: "buddadawg-probe",
             kAudioAggregateDeviceUIDKey: "buddadawg-probe-\(UUID().uuidString)",
             kAudioAggregateDeviceIsPrivateKey: 1,
             kAudioAggregateDeviceIsStackedKey: 0,
             kAudioAggregateDeviceTapAutoStartKey: 1,
-            kAudioAggregateDeviceMainSubDeviceKey: uid,
-            kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: uid]],
             kAudioAggregateDeviceTapListKey: [[
                 kAudioSubTapDriftCompensationKey: 1,
                 kAudioSubTapUIDKey: tapUUID.uuidString,
