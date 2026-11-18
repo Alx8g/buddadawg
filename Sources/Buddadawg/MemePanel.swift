@@ -49,12 +49,20 @@ final class MemePanel {
     /// Whole-utterance-ish match for the meme's dog phrases. Deliberately forgiving:
     /// ASR renders "da dog wit da butter" a dozen ways, so the rule is "short utterance
     /// containing both a butter-word and a dog-word", plus the exact narration lines.
+    /// Verified against a real dictated ramble: "buddadawg buddadawg the dog with the
+    /// butter butter go put the butter on him the dog" (15 words) must match.
     static func matches(_ text: String) -> Bool {
         let words = text.lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
-        guard words.count <= 12 else { return false }
+        guard words.count <= 20 else { return false }
         let joined = words.joined(separator: " ")
+        // Meme-specific phrases that are unambiguous even mid-sentence.
+        let phrases = ["butter on him", "butta on him", "put the butter", "put da butter",
+                       "put a butter", "dog wit da butter", "dog with da butter",
+                       "dog with the butter", "dog with a butter", "the butter dog",
+                       "butter dog", "buddadawg"]
+        if phrases.contains(where: { joined.contains($0) }) { return true }
         let exact = ["i put the butter on him", "i put da butter on him",
                      "put the butter on him", "put da butter on him",
                      "butter dog", "the butter dog", "buddadawg"]

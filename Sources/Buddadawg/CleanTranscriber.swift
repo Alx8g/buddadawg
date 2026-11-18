@@ -16,9 +16,13 @@ final class CleanTranscriber {
     }
 
     /// 16 kHz mono samples in, cleaned text out. A fresh decoder state per dictation.
+    /// FluidAudio rejects clips under 300 ms; zero-pad short captures (a quick "yes")
+    /// rather than dropping them.
     func transcribe(_ samples: [Float]) async throws -> String {
+        var padded = samples
+        if padded.count < 4800 { padded += [Float](repeating: 0, count: 4800 - padded.count) }
         var state = TdtDecoderState.make(decoderLayers: decoderLayers)
-        let result = try await asr.transcribe(samples, decoderState: &state)
+        let result = try await asr.transcribe(padded, decoderState: &state)
         // Bark emits <unk> where training text had a quotation mark; current FluidAudio drops it,
         // but strip defensively so a tag can never reach the clipboard.
         return result.text
