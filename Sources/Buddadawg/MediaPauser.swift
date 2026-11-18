@@ -24,10 +24,6 @@ final class MediaPauser {
     private var pausedByUs = false
     private var method: Method = .mediaRemote
     private var browserPausedByUs = false  // browser video has no Now Playing session; toggled via media key
-    /// After WE toggle-pause a browser video its helper keeps the output flag ~15 s
-    /// (the known lag), which would look like "still playing" to the next dictation
-    /// and unpause it. Suppress browser detection until the lag window has passed.
-    private var browserCooldownUntil = Date.distantPast
     private var session = 0  // pause ownership: a resume only counts for the session that paused
     private let lock = NSLock()
 
@@ -99,16 +95,12 @@ final class MediaPauser {
                let bid = app.bundleIdentifier {
                 npPausedBrowser = Self.browserBundles.contains { bid.hasPrefix($0) }
             }
-            let browserCooldown = Date() < self.browserCooldownUntil
-            if !playing, !npPausedBrowser, !browserCooldown, Self.browserVideoLikelyPlaying() {
+            if !playing, !npPausedBrowser, Self.browserVideoLikelyPlaying() {
                 Self.postPlayPauseKey()
-                self.lock.withLock {
-                    self.browserPausedByUs = true
-                    self.browserCooldownUntil = Date().addingTimeInterval(20)
-                }
+                self.lock.withLock { self.browserPausedByUs = true }
                 log("media: browser video toggle-pause (hal=[\(halDesc)])")
-            } else if !playing, (npPausedBrowser || browserCooldown) {
-                log("media: browser helper output present but vetoed (npPausedBrowser=\(npPausedBrowser), cooldown=\(browserCooldown))")
+            } else if !playing, npPausedBrowser {
+                log("media: browser helper output present but vetoed (npPausedBrowser=true)")
             }
             completion(mine)
         }
@@ -123,14 +115,6 @@ final class MediaPauser {
         }
         group.notify(queue: .global()) { finishOnce() }
         DispatchQueue.global().asyncAfter(deadline: .now() + 0.35) { finishOnce() }
-    }
-
-    /// A deliberate gesture (triple-tap fn) starts a real dictation right after the
-    /// gesture's micro-dictation already toggled pause+resume. The cooldown exists to
-    /// absorb OUR OWN pause's helper lag — it must not blind the dictation that the
-    /// gesture actually produces, so the App clears it when the gesture fires.
-    func clearBrowserCooldown() {
-        lock.withLock { browserCooldownUntil = .distantPast }
     }
 
     /// Resumes playback if (and only if) this session paused it and no newer dictation
