@@ -26,6 +26,7 @@ final class MediaPauser {
     private var method: Method = .mediaRemote
     private var browserPausedByUs = false  // browser video has no Now Playing session; toggled via media key
     private var session = 0  // pause ownership: a resume only counts for the session that paused
+    private var lastResumedSession = 0  // newest session whose dictation has finished and asked to resume
     private let lock = NSLock()
 
     // MediaRemote (private framework, resolved at runtime so nothing breaks if it moves).
@@ -141,6 +142,7 @@ final class MediaPauser {
     func resumeIfPausedByUs(session mine: Int) {
         var didBrowser = false
         let (wasPaused, via): (Bool, Method) = lock.withLock {
+            lastResumedSession = max(lastResumedSession, mine)
             if browserPausedByUs, session == mine { browserPausedByUs = false; didBrowser = true }
             guard pausedByUs, session == mine else { return (false, method) }
             let v = (pausedByUs, method); pausedByUs = false; return v
@@ -307,7 +309,14 @@ final class MediaPauser {
         log("media: output already running; \(what) resume deferred 3 s")
         DispatchQueue.global().asyncAfter(deadline: .now() + 3) { [self] in
             lock.withLock {
-                guard session == mine else { return }
+                // A newer dictation started during the wait. Its pause query sees nothing
+                // playing (we paused it), so hand it this pause and let its finish resume.
+                // If that dictation already finished, nobody is left to resume: do it now.
+                if session != mine, lastResumedSession < session {
+                    if !pausedByUs && !browserPausedByUs { pausedByUs = true; method = .mediaKey }
+                    log("media: newer dictation started; \(what) resume handed to session \(session)")
+                    return
+                }
                 if !Self.outputIsRunning() {
                     Self.postPlayPauseKey()
                     log("media: resumed via \(what) (deferred)")
