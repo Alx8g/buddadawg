@@ -172,10 +172,33 @@ final class MediaPauser {
     /// the video blaring.
     private static func browserVideoLikelyPlaying() -> Bool {
         outputProcesses().contains { proc in
-            browserBundles.contains { base in
-                proc.bundle == base || proc.bundle.hasPrefix(base + ".helper")
+            let bundle = resolvedBundle(pid: proc.pid, bundle: proc.bundle)
+            return browserBundles.contains { base in
+                bundle == base || bundle.hasPrefix(base + ".helper")
             }
         }
+    }
+
+    /// WebKit browsers (Safari, Orion…) play media audio through shared
+    /// `com.apple.WebKit.*` processes, so the HAL bundle id never names the browser.
+    /// Walk the process tree to the owning app; non-browser WKWebView hosts (Slack,
+    /// Mail…) resolve to their own bundle and stay excluded.
+    private static func resolvedBundle(pid: pid_t, bundle: String) -> String {
+        guard bundle.hasPrefix("com.apple.WebKit.") else { return bundle }
+        var current = pid
+        for _ in 0..<6 {
+            var info = proc_bsdinfo()
+            let size = Int32(MemoryLayout<proc_bsdinfo>.stride)
+            guard proc_pidinfo(current, PROC_PIDTBSDINFO, 0, &info, size) == size else { break }
+            let parent = pid_t(bitPattern: UInt32(info.pbi_ppid))
+            guard parent > 1, parent != current else { break }
+            if let app = NSRunningApplication(processIdentifier: parent),
+               let bid = app.bundleIdentifier, !bid.isEmpty, !bid.hasPrefix("com.apple.WebKit.") {
+                return bid
+            }
+            current = parent
+        }
+        return bundle
     }
 
     private static let browserBundles = [
