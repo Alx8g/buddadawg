@@ -14,6 +14,7 @@ cp .build/release/Buddadawg "$APP/Contents/MacOS/Buddadawg"
 cp -R Models/BarkEncoderANE.mlpackage Models/decoder.bin Models/decoder.json Models/vocab.json "$APP/Contents/Resources/Models/"
 cp -R ModelsClean "$APP/Contents/Resources/"
 cp NOTICE "$APP/Contents/Resources/"
+cp Resources/butterdog.gif "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

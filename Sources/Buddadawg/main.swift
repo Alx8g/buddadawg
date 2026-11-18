@@ -64,6 +64,8 @@ final class App: NSObject, NSApplicationDelegate {
     /// finish() still runs the authoritative final transcription. Decodes chain
     /// serially and skip while the final pass is running.
     let partialHUD = PartialHUD()
+    /// Butter Dog easter egg: a dictated meme phrase plays the GIF bottom-centre.
+    let memePanel = MemePanel()
     private var partialTimer: Timer?
     private var partialTail: Task<Void, Never>?
     private var partialBusy = false
@@ -424,6 +426,7 @@ final class App: NSObject, NSApplicationDelegate {
                         return
                     }
                     if finalText.isEmpty { overlay.show(.hidden); return }
+                    if MemePanel.matches(finalText) { memePanel.celebrate() }
                     if !secureInput { Recents.add(finalText) }
                     rebuildRecents()
                     let payload = finalText.hasSuffix("\n") ? finalText : finalText + " "  // also leaves it on the clipboard for a manual Cmd-V
