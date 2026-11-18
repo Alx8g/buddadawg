@@ -1,5 +1,6 @@
 import AppKit
 import CoreAudio
+import Darwin
 import Foundation
 
 /// Pauses whatever is playing (Music, Spotify, a browser's Now Playing session such as
@@ -179,33 +180,31 @@ final class MediaPauser {
         }
     }
 
-    /// WebKit browsers (Safari, Orion…) play media audio through shared
-    /// `com.apple.WebKit.*` processes, so the HAL bundle id never names the browser.
-    /// Walk the process tree to the owning app; non-browser WKWebView hosts (Slack,
-    /// Mail…) resolve to their own bundle and stay excluded.
+    /// WebKit browsers (Safari, ZigZag, Orion…) play media audio through shared
+    /// `com.apple.WebKit.*` XPC services spawned by launchd, so neither the HAL
+    /// bundle id nor the process tree names the browser. `responsibility_get_pid_
+    /// responsible_for_pid` returns the app that owns the XPC service — resolve it
+    /// and non-browser WKWebView hosts (Slack, Mail…) stay excluded.
+    private typealias ResponsiblePidFn = @convention(c) (pid_t, UnsafeMutablePointer<pid_t>) -> Int32
+    private static let responsiblePidFn: ResponsiblePidFn? = {
+        guard let p = dlsym(dlopen("/usr/lib/libSystem.B.dylib", RTLD_LAZY), "responsibility_get_pid_responsible_for_pid") else { return nil }
+        return unsafeBitCast(p, to: ResponsiblePidFn.self)
+    }()
+
     private static func resolvedBundle(pid: pid_t, bundle: String) -> String {
-        guard bundle.hasPrefix("com.apple.WebKit.") else { return bundle }
-        var current = pid
-        for _ in 0..<6 {
-            var info = proc_bsdinfo()
-            let size = Int32(MemoryLayout<proc_bsdinfo>.stride)
-            guard proc_pidinfo(current, PROC_PIDTBSDINFO, 0, &info, size) == size else { break }
-            let parent = pid_t(bitPattern: UInt32(info.pbi_ppid))
-            guard parent > 1, parent != current else { break }
-            if let app = NSRunningApplication(processIdentifier: parent),
-               let bid = app.bundleIdentifier, !bid.isEmpty, !bid.hasPrefix("com.apple.WebKit.") {
-                return bid
-            }
-            current = parent
-        }
-        return bundle
+        guard bundle.hasPrefix("com.apple.WebKit."), let fn = responsiblePidFn else { return bundle }
+        var responsible: pid_t = 0
+        guard fn(pid, &responsible) == 0, responsible > 1,
+              let app = NSRunningApplication(processIdentifier: responsible),
+              let bid = app.bundleIdentifier, !bid.isEmpty else { return bundle }
+        return bid
     }
 
     private static let browserBundles = [
         "net.imput.helium", "com.google.Chrome", "company.thebrowser.Browser",
         "com.apple.Safari", "org.mozilla.firefox", "com.microsoft.edgemac",
         "com.brave.Browser", "company.diabrowser", "com.kagi.Orion",
-        "com.operasoftware.Opera", "com.vivaldi.Vivaldi",
+        "com.operasoftware.Opera", "com.vivaldi.Vivaldi", "wang.zigao.zigzag",
     ]
 
     private static func isMediaBundle(_ bundle: String) -> Bool {
