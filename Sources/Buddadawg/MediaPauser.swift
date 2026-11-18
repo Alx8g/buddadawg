@@ -185,7 +185,8 @@ final class MediaPauser {
     /// bundle id nor the process tree names the browser. `responsibility_get_pid_
     /// responsible_for_pid` returns the app that owns the XPC service — resolve it
     /// and non-browser WKWebView hosts (Slack, Mail…) stay excluded.
-    private typealias ResponsiblePidFn = @convention(c) (pid_t, UnsafeMutablePointer<pid_t>) -> Int32
+    // Signature is pid_t f(pid_t) — returns the responsible pid, 0 on failure.
+    private typealias ResponsiblePidFn = @convention(c) (pid_t) -> pid_t
     private static let responsiblePidFn: ResponsiblePidFn? = {
         guard let p = dlsym(dlopen("/usr/lib/libSystem.B.dylib", RTLD_LAZY), "responsibility_get_pid_responsible_for_pid") else { return nil }
         return unsafeBitCast(p, to: ResponsiblePidFn.self)
@@ -193,8 +194,8 @@ final class MediaPauser {
 
     private static func resolvedBundle(pid: pid_t, bundle: String) -> String {
         guard bundle.hasPrefix("com.apple.WebKit."), let fn = responsiblePidFn else { return bundle }
-        var responsible: pid_t = 0
-        guard fn(pid, &responsible) == 0, responsible > 1,
+        let responsible = fn(pid)
+        guard responsible > 1,
               let app = NSRunningApplication(processIdentifier: responsible),
               let bid = app.bundleIdentifier, !bid.isEmpty else { return bundle }
         return bid
