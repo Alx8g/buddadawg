@@ -24,6 +24,14 @@ final class Hotkey {
     /// recording starter (presses=1, active=true), so the callback MUST begin a
     /// capture — the App decides whether it's Smart Dictation or plain dictation.
     var onTripleTap: () -> Void = {}
+    /// fn+Control chord while idle: explicit Smart Dictation. No tap counting, no
+    /// veto — the modifier makes intent unambiguous. Same contract as onTripleTap:
+    /// the press is already armed as the recording starter, so a capture MUST begin.
+    var onChord: () -> Void = {}
+    /// fn went down FIRST and Control joined while fn is still physically held —
+    /// the in-flight dictation converts to Smart Dictation. Recording already runs,
+    /// so this only flags intent; no new capture starts.
+    var onChordEngaged: () -> Void = {}
     var onFinish: (Bool) -> Void = { _ in }  // send = the finishing gesture was a double-tap
     var onCancel: () -> Void = {}
     var autoSend = false
@@ -41,9 +49,11 @@ final class Hotkey {
     private var pendingFinish: DispatchWorkItem?
     private var lastUpAt: Date?
     private var tapUps: [Date] = []       // recent quick fn releases — the triple-tap rhythm signal
+    private var lastControlUpAt: Date?     // fn+Control chord: control tapped just before fn counts too
     private var lastTripleAt = Date.distantPast
     private var suppressUntil: Date?      // autoSend: swallow presses briefly after a finish
     private static let fnKeycode: Int64 = 63
+    private static let controlKeycode: Int64 = 59
     private static let globeKeycode: Int64 = 179  // keyDown macOS synthesises for a short fn/Globe tap; long holds never emit it
     private static let tapMax: TimeInterval = 0.45   // release sooner = tap; later = hold (push-to-talk)
     private static let doubleTapWindow = max(NSEvent.doubleClickInterval, 0.5)
@@ -71,6 +81,7 @@ final class Hotkey {
     }
 
     static func fnHeld() -> Bool { CGEventSource.flagsState(.hidSystemState).contains(.maskSecondaryFn) }
+    static func controlHeld() -> Bool { CGEventSource.flagsState(.hidSystemState).contains(.maskControl) }
 
     private func handle(_ type: CGEventType, _ event: CGEvent) {
         switch type {
@@ -89,6 +100,16 @@ final class Hotkey {
             cancelNow()
         case .flagsChanged where event.getIntegerValueField(.keyboardEventKeycode) == Self.fnKeycode:
             if event.flags.contains(.maskSecondaryFn) { fnDown() } else { fnUp() }
+        case .flagsChanged where event.getIntegerValueField(.keyboardEventKeycode) == Self.controlKeycode:
+            // flagsChanged fires on press AND release; maskControl marks the press.
+            if event.flags.contains(.maskControl) {
+                // fn held, or fn tapped within ~0.3 s — either ordering of the chord.
+                let fnRecent = pressDownAt != nil
+                    || lastUpAt.map { Date().timeIntervalSince($0) < 0.3 } ?? false
+                if active, fnRecent { onChordEngaged() }
+            } else {
+                lastControlUpAt = Date()
+            }
         default:
             break
         }
@@ -96,14 +117,17 @@ final class Hotkey {
 
     private func fnDown() {
         let now = Date()
-        // Triple-tap evaluation must happen BEFORE the autoSend suppression: gesture
-        // taps land inside the suppress window and would otherwise be swallowed whole.
+        // Gesture evaluation must happen BEFORE the autoSend suppression: gesture
+        // presses land inside the suppress window and would otherwise be swallowed.
+        // fn+Control is the explicit chord; three quick taps is the inferred gesture.
+        let chord = !active && (Self.controlHeld()
+            || lastControlUpAt.map { now.timeIntervalSince($0) < 0.3 } ?? false)
         var tripleCandidate = false
-        if !active {
+        if !active, !chord {
             tapUps = tapUps.filter { now.timeIntervalSince($0) < 1.6 }
             tripleCandidate = tapUps.count >= 2 && now.timeIntervalSince(lastTripleAt) > 1.5
         }
-        if !tripleCandidate, let until = suppressUntil {
+        if !chord, !tripleCandidate, let until = suppressUntil {
             if now < until { return }  // autoSend cooldown: swallow the stray second tap
             suppressUntil = nil
         }
@@ -120,6 +144,12 @@ final class Hotkey {
         if active {
             presses += 1
             if pendingFinishWasArmed { awaitingSecondTap = true }
+            return
+        }
+        if chord {
+            presses = 1
+            active = true
+            onChord()
             return
         }
         if tripleCandidate {

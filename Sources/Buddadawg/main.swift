@@ -136,6 +136,25 @@ final class App: NSObject, NSApplicationDelegate {
             overlay.show(.cancelled)
         }
         hotkey.autoSend = autoSendEnter
+        hotkey.onChordEngaged = { [self] in
+            // fn-first chord: the dictation is already recording; just flag it smart.
+            guard !commandMode, !smartDictation, RewriteEngine.isAvailable else { return }
+            smartDictation = true
+            overlay.smart = true
+            RewriteEngine.prewarm(prefix: RewriteEngine.cleanupInstructions)
+            log("smart dictation: fn+control chord (fn first)")
+        }
+        hotkey.onChord = { [self] in
+            // fn+Control: explicit Smart Dictation — no silence veto needed, the
+            // chord IS the intent. Degrades to plain dictation without Apple Intelligence.
+            if !commandMode, RewriteEngine.isAvailable {
+                smartDictation = true
+                overlay.smart = true
+                RewriteEngine.prewarm(prefix: RewriteEngine.cleanupInstructions)
+                log("smart dictation: fn+control chord")
+            }
+            startCapture()
+        }
         hotkey.onFinish = { [self] send in
             if commandMode { finishCommand() } else { finish(send: send) }
         }
