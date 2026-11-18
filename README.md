@@ -21,14 +21,20 @@ The install downloads ~640 MB of models and pre-compiles them for the Neural Eng
 
 ## Use
 
-- **Tap fn** to start recording, **tap again** to stop — the text is cleaned, pasted at the cursor, and **Enter is pressed automatically** (Auto-Send is on by default; turn off **Auto-Send Dictation** in the menu for paste-only, where double-tap fn sends instead).
-- Holding fn still works as push-to-talk: hold, talk, release to finish.
-- Any other key while recording cancels.
-- Menu bar → **Recent Dictations** re-pastes a recent result (handy when a paste missed).
+- **Tap fn** to start recording, **tap again** to stop. With **Auto-Send Dictation** on (the default), the text is cleaned, pasted at the cursor, and **Enter is pressed automatically**. Turn Auto-Send off in the menu for paste-only — then **double-tap fn** while recording stops and sends.
+- **Hold fn** still works as push-to-talk: hold, talk, release to finish.
+- Double-tap **fn** within a few seconds after a paste re-sends the last dictation + Enter.
+- **Smart Dictation** runs the transcript through an on-device cleanup pass before pasting. Two ways in: **fn + Control** (either order — tap them together while idle) or **three quick taps of fn** while idle (the fallback, and it only fires if the clip between the taps was silence). Needs Apple Intelligence; without it the gesture just dictates normally.
+- **Command Mode**: select text in any app, then menu bar → **Command Selection… (Apple Intelligence)**, dictate what you want done ("make this shorter", "fix the grammar"), tap **fn** to finish — the rewrite replaces your selection. Needs Apple Intelligence.
+- **Snippets**: dictate exactly `snippet <trigger>` to paste canned text — `~/.config/buddadawg/snippets`, `trigger => text` per line, `\n` for line breaks. Edit via **Edit Snippets…**.
+- Spoken edits while dictating: **"scratch that"** (alone) discards the utterance, **"new paragraph"** / **"new line"** at the end of a phrase insert breaks, **"bullet point …"** at the start prefixes a bullet, and words like **"comma"**, **"question mark"**, **"open quote"** insert punctuation.
+- While you talk, a floating HUD shows a live partial transcript (re-decoded ~every 2 s); the final pass on fn release is still authoritative.
+- Dictating music pauses it while you talk — **Music, Spotify, and browser video** (including WebKit browsers, via the media key) — and resumes it after; only playback Buddadawg paused is resumed. Toggle with **Pause Media While Dictating**.
 - **Keep Audio for Recovery** (menu bar, off by default) stores the last dictations as local WAVs for 7 days. **Stored Audio** re-transcribes one through the loaded engine and pastes it — the file is only deleted on success. **Delete Stored Audio** wipes the vault.
 - Fix words two ways: select the correct spelling in any app → **Add Selection to Dictionary…**, or edit `~/.config/buddadawg/dictionary` directly via **Edit Dictionary…** (`tail scale => Tailscale`), seeded on first launch.
-- **Snippets**: dictate exactly `snippet <trigger>` to paste canned text — `~/.config/buddadawg/snippets`, `trigger => text` per line, `\n` for line breaks. Edit via **Edit Snippets…**.
-- While you talk, a floating HUD shows a live partial transcript (re-decoded ~every 2 s); the final pass on fn release is still authoritative.
+- Menu bar → **Recent Dictations** re-pastes a recent result (handy when a paste missed).
+- Any other key while fn is held cancels (fn + key is a shortcut, not dictation); typing after a tap does not.
+- Easter egg: dictate the Butter Dog meme phrase ("put the butter on him" and friends, or just "buddadawg") and the dog plays bottom-centre for a few seconds.
 - Escape hatch: `defaults write co.alex.buddadawg engine bark` forces the verbatim engine.
 
 ## Test
