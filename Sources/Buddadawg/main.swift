@@ -173,13 +173,36 @@ final class App: NSObject, NSApplicationDelegate {
             if commandMode { finishCommand() } else { finish(send: send) }
         }
 
+        requestPermissions()
+        Task { await loadModel() }
+        // First run only: the onboarding window explains the app and walks the
+        // permission grants. The flag is set by Onboarding's "Get Started".
+        if !CommandLine.arguments.contains("--precompile"),
+           !UserDefaults.standard.bool(forKey: Onboarding.completedKey) {
+            showOnboarding()
+        }
+    }
+
+    /// Mic + Accessibility requests, shared by launch and Onboarding's "Grant
+    /// Permissions" button. Safe to call repeatedly: the mic prompt only appears
+    /// while status is undetermined, and Hotkey.install() is idempotent.
+    func requestPermissions() {
         AVCaptureDevice.requestAccess(for: .audio) { ok in log("mic access: \(ok)") }
-        log("launch: accessibility trusted = \(AXIsProcessTrusted())")
+        log("accessibility trusted = \(AXIsProcessTrusted())")
         if !AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary) {
             setStatus("Allow Accessibility, then relaunch")
         }
         if !hotkey.install() { setStatus("Allow Accessibility, then relaunch") }
-        Task { await loadModel() }
+    }
+
+    private var onboarding: Onboarding?
+
+    /// First run shows it automatically; "Show Onboarding…" in the menu re-opens it.
+    @objc func showOnboarding() {
+        if let onboarding { onboarding.show(); return }
+        let created = Onboarding(app: self)
+        onboarding = created
+        created.show()
     }
 
     /// Shared capture start for fn taps and the triple-tap gesture: the mic must be
@@ -596,6 +619,7 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(vaultDeleteItem)
         menu.addItem(NSMenuItem(title: "Edit Dictionary…", action: #selector(editDictionary), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Edit Snippets…", action: #selector(editSnippets), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Show Onboarding…", action: #selector(showOnboarding), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Add Selection to Dictionary…", action: #selector(addSelectionToDictionary), keyEquivalent: ""))
         let commandItem = NSMenuItem(title: "Command Selection… (Apple Intelligence)", action: #selector(commandSelection), keyEquivalent: "")
         commandItem.isEnabled = RewriteEngine.isAvailable

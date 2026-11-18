@@ -60,7 +60,10 @@ final class Hotkey {
     static let syntheticUserData: Int64 = 0x4244_4157  // "BDAW"
 
     /// Returns false if the tap couldn't be created (Accessibility permission missing).
+    /// Idempotent: a second call (e.g. Onboarding's "Grant Permissions" re-requesting
+    /// permissions after launch) returns true without installing a duplicate tap.
     func install() -> Bool {
+        if tap != nil { return true }
         let mask = CGEventMask(1 << CGEventType.flagsChanged.rawValue) | CGEventMask(1 << CGEventType.keyDown.rawValue)
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
