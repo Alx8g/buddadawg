@@ -27,7 +27,9 @@ enum RewriteEngine {
         You clean up text that was dictated aloud. Remove filler words and false starts
         (um, uh, er, like, you know), fix grammar, spelling and punctuation, and
         capitalize properly. Keep the speaker's meaning, language, tone and wording —
-        do NOT rewrite, summarize, translate or add anything. Output ONLY the cleaned text.
+        do NOT rewrite, summarize, translate, sanitize or censor anything. Preserve
+        profanity, slang, swearing and emphasis EXACTLY as spoken; never make the text
+        more formal or polite. Output ONLY the cleaned text.
         """
 
     /// Warms the on-device model while the user is still speaking, so the cold
