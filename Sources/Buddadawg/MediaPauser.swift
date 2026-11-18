@@ -160,10 +160,10 @@ final class MediaPauser {
             if let send = sendCommandFn, send(0, nil) {  // kMRPlay: harmless if already playing
                 log("media: resumed via MediaRemote")
             } else {
-                Self.resumeToggle(what: "media key (MediaRemote play failed)")
+                resumeToggle(what: "media key (MediaRemote play failed)", session: mine)
             }
         case .mediaKey:
-            Self.resumeToggle(what: "media key")
+            resumeToggle(what: "media key", session: mine)
         }
     }
 
@@ -293,19 +293,27 @@ final class MediaPauser {
     /// when nothing else holds the output device — otherwise we'd pause whatever the
     /// user started meanwhile. If something transient (a notification sound) is
     /// holding output right now, retry once after a few seconds.
-    private static func resumeToggle(what: String) {
-        if !outputIsRunning() {
-            postPlayPauseKey()
-            log("media: resumed via \(what)")
-            return
+    private func resumeToggle(what: String, session mine: Int) {
+        let deferred = lock.withLock { () -> Bool in
+            guard session == mine else { return false }
+            if !Self.outputIsRunning() {
+                Self.postPlayPauseKey()
+                log("media: resumed via \(what)")
+                return false
+            }
+            return true
         }
+        guard deferred else { return }
         log("media: output already running; \(what) resume deferred 3 s")
-        DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
-            if !outputIsRunning() {
-                postPlayPauseKey()
-                log("media: resumed via \(what) (deferred)")
-            } else {
-                log("media: output still running; \(what) resume dropped")
+        DispatchQueue.global().asyncAfter(deadline: .now() + 3) { [self] in
+            lock.withLock {
+                guard session == mine else { return }
+                if !Self.outputIsRunning() {
+                    Self.postPlayPauseKey()
+                    log("media: resumed via \(what) (deferred)")
+                } else {
+                    log("media: output still running; \(what) resume dropped")
+                }
             }
         }
     }
