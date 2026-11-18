@@ -19,6 +19,11 @@ import Foundation
 /// - Buddadawg's own synthetic keystrokes are tagged and ignored here.
 final class Hotkey {
     var onStart: () -> Void = {}
+    /// Three rapid fn taps while idle: tap1+tap2 form a micro-dictation, tap3 lands
+    /// here instead of onStart. The hotkey has already armed this press as the
+    /// recording starter (presses=1, active=true), so the callback MUST begin a
+    /// capture — the App decides whether it's Smart Dictation or plain dictation.
+    var onTripleTap: () -> Void = {}
     var onFinish: (Bool) -> Void = { _ in }  // send = the finishing gesture was a double-tap
     var onCancel: () -> Void = {}
     var autoSend = false
@@ -35,6 +40,8 @@ final class Hotkey {
     private var pendingFinishWasArmed = false  // a pendingFinish is scheduled; next fnDown confirms the double-tap
     private var pendingFinish: DispatchWorkItem?
     private var lastUpAt: Date?
+    private var tapUps: [Date] = []       // recent quick fn releases — the triple-tap rhythm signal
+    private var lastTripleAt = Date.distantPast
     private var suppressUntil: Date?      // autoSend: swallow presses briefly after a finish
     private static let fnKeycode: Int64 = 63
     private static let globeKeycode: Int64 = 179  // keyDown macOS synthesises for a short fn/Globe tap; long holds never emit it
@@ -88,13 +95,21 @@ final class Hotkey {
     }
 
     private func fnDown() {
-        if let until = suppressUntil {
-            if Date() < until { return }  // autoSend cooldown: swallow the stray second tap
+        let now = Date()
+        // Triple-tap evaluation must happen BEFORE the autoSend suppression: gesture
+        // taps land inside the suppress window and would otherwise be swallowed whole.
+        var tripleCandidate = false
+        if !active {
+            tapUps = tapUps.filter { now.timeIntervalSince($0) < 1.6 }
+            tripleCandidate = tapUps.count >= 2 && now.timeIntervalSince(lastTripleAt) > 1.5
+        }
+        if !tripleCandidate, let until = suppressUntil {
+            if now < until { return }  // autoSend cooldown: swallow the stray second tap
             suppressUntil = nil
         }
         pendingFinish?.cancel(); pendingFinish = nil
-        pressDownAt = Date()
-        pressWasDoubleTap = lastUpAt.map { Date().timeIntervalSince($0) < Self.doubleTapWindow } ?? false
+        pressDownAt = now
+        pressWasDoubleTap = lastUpAt.map { now.timeIntervalSince($0) < Self.doubleTapWindow } ?? false
         if !active, externalCapture {
             // Command Mode stop tap: behave like a second press so fnUp finishes,
             // but don't fire onStart — the App already started this capture.
@@ -107,6 +122,14 @@ final class Hotkey {
             if pendingFinishWasArmed { awaitingSecondTap = true }
             return
         }
+        if tripleCandidate {
+            tapUps.removeAll()
+            lastTripleAt = now
+            presses = 1
+            active = true
+            onTripleTap()
+            return
+        }
         presses = 1
         active = true
         onStart()
@@ -117,6 +140,7 @@ final class Hotkey {
         pressDownAt = nil
         lastUpAt = Date()
         let held = Date().timeIntervalSince(downAt)
+        if held < 0.6 { tapUps.append(Date()) }  // taps only — holds aren't gesture taps
         if awaitingSecondTap {
             awaitingSecondTap = false
             finishNow(send: held < Self.tapMax)

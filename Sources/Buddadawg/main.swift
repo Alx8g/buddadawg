@@ -59,16 +59,12 @@ final class App: NSObject, NSApplicationDelegate {
     /// local LLM cleanup pass before pasting. The model pre-warms while the user
     /// speaks so the pass overlaps nothing.
     private var smartDictation = false
-    /// Triple-tap detection: tap1 starts a normal dictation, tap2 stops it (~0.5-1.2 s
-    /// of silence), tap3's fnDown lands here. The gesture's "dictation" must be short,
-    /// SILENT (peak < 0.02 — room tone; speech peaks are 0.03+), and recent. Speech in
-    /// the clip means it was a real dictation, not gesture taps.
+    /// Triple-tap veto data: the hotkey detects the tap rhythm; the App confirms the
+    /// clip between tap1-2 wasn't real speech. Gesture clips contain fn-key clicks
+    /// (peak ~0.02-0.03) but no voice (speech peaks 0.1+), so the threshold sits at 0.08.
     private var lastDictationSeconds: Double = .infinity
     private var lastDictationPeak: Float = 1
     private var lastDictationEnd = Date.distantPast
-    /// After Smart Dictation triggers, extra fn taps inside this window must not
-    /// re-trigger it — they belong to the gesture, not new dictations.
-    private var smartCooldownUntil = Date.distantPast
     private var armedUntil = Date.distantPast
     private static let armedWindow: TimeInterval = 6  // double-tap fn this long after a paste re-sends + Enter
     var engineName = ""
@@ -101,50 +97,21 @@ final class App: NSObject, NSApplicationDelegate {
         buildMenu()
         overlay.level = { [recorder] in recorder.level }
         if CommandLine.arguments.contains("--demo") { runDemo() }
-        hotkey.onStart = { [self] in
-            log("fn down (model ready: \(ready), mic: \(AVCaptureDevice.authorizationStatus(for: .audio).rawValue))")
-            guard ready else {
-                setStatus("Model still loading…")
-                overlay.show(.cancelled)
-                return
-            }
-            // Triple-tap fn → Smart Dictation: flag it, warm the LLM while the
-            // user speaks, then fall through to the normal recording path. Without
-            // Apple Intelligence it silently degrades to plain dictation.
-            if !commandMode, !smartDictation, RewriteEngine.isAvailable,
-               Date() > smartCooldownUntil,
-               lastDictationSeconds < 1.4, lastDictationPeak < 0.02,
-               Date().timeIntervalSince(lastDictationEnd) < 1.2 {
+        hotkey.onStart = { [self] in startCapture() }
+        hotkey.onTripleTap = { [self] in
+            // The hotkey confirmed three rapid taps and already armed this press as the
+            // recording starter — a capture MUST begin either way. The veto below only
+            // decides Smart Dictation vs plain: the clip between tap1-2 must have been
+            // silence, or it was two quick dictations, not a gesture.
+            if !commandMode, RewriteEngine.isAvailable,
+               lastDictationSeconds < 1.6, lastDictationPeak < 0.08,
+               Date().timeIntervalSince(lastDictationEnd) < 1.6 {
                 smartDictation = true
-                smartCooldownUntil = Date().addingTimeInterval(2)
                 overlay.smart = true
                 RewriteEngine.prewarm(prefix: RewriteEngine.cleanupInstructions)
                 log("smart dictation: triple-tap detected")
             }
-            // Tap model: the mic must be live the instant fn goes down, so recording starts
-            // immediately and media pausing runs concurrently (it used to gate recorder.start
-            // behind up-to-0.35 s of Now Playing queries — fine for hold-fn, deadly for taps).
-            do {
-                try recorder.start()
-                overlay.show(.listening)
-            } catch {
-                log("recorder start failed: \(error.localizedDescription)")
-                setStatus("Mic error: \(error.localizedDescription)")
-                return
-            }
-            mediaEpoch += 1
-            let epoch = mediaEpoch
-            mediaInFlight.insert(epoch)
-            MediaPauser.shared.pauseIfPlaying { [self] token in
-                DispatchQueue.main.async { [self] in
-                    mediaInFlight.remove(epoch)
-                    mediaTokens[epoch] = token
-                    if mediaResumePending.remove(epoch) != nil {
-                        MediaPauser.shared.resumeIfPausedByUs(session: token)
-                        mediaTokens.removeValue(forKey: epoch)
-                    }
-                }
-            }
+            startCapture()
         }
         hotkey.onCancel = { [self] in
             if commandMode {
@@ -180,6 +147,40 @@ final class App: NSObject, NSApplicationDelegate {
         }
         if !hotkey.install() { setStatus("Allow Accessibility, then relaunch") }
         Task { await loadModel() }
+    }
+
+    /// Shared capture start for fn taps and the triple-tap gesture: the mic must be
+    /// live the instant fn goes down, so recording starts immediately and media pausing
+    /// runs concurrently (it used to gate recorder.start behind up-to-0.35 s of Now
+    /// Playing queries — fine for hold-fn, deadly for taps).
+    private func startCapture() {
+        log("fn down (model ready: \(ready), mic: \(AVCaptureDevice.authorizationStatus(for: .audio).rawValue))")
+        guard ready else {
+            setStatus("Model still loading…")
+            overlay.show(.cancelled)
+            return
+        }
+        do {
+            try recorder.start()
+            overlay.show(.listening)
+        } catch {
+            log("recorder start failed: \(error.localizedDescription)")
+            setStatus("Mic error: \(error.localizedDescription)")
+            return
+        }
+        mediaEpoch += 1
+        let epoch = mediaEpoch
+        mediaInFlight.insert(epoch)
+        MediaPauser.shared.pauseIfPlaying { [self] token in
+            DispatchQueue.main.async { [self] in
+                mediaInFlight.remove(epoch)
+                mediaTokens[epoch] = token
+                if mediaResumePending.remove(epoch) != nil {
+                    MediaPauser.shared.resumeIfPausedByUs(session: token)
+                    mediaTokens.removeValue(forKey: epoch)
+                }
+            }
+        }
     }
 
     var readyStatus: String {
