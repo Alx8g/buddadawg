@@ -1,0 +1,1669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buddadawg — Dictation Overlay: Ten Directions, Round Two</title>
+<meta name="description" content="Round two: ten animated design explorations for the Buddadawg macOS dictation overlay — voice art, ambient minimal, instrument. Grayscale with a warm accent on paste.">
+<style>
+:root{
+  --paper:#f4f1ea; --paper2:#ece8de; --ink:#1a1a17; --mut:#6e695d; --faint:#a39c8c;
+  --line:#d8d3c4; --line2:#c9c3b2; --desk:#151619; --desk2:#1e1f23;
+  --serif:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+::selection{background:var(--ink);color:var(--paper)}
+a{color:var(--ink);text-underline-offset:3px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:2px}
+.wrap{max-width:1190px;margin:0 auto;padding:0 28px}
+
+/* ---------- masthead ---------- */
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mut)}
+.masthead{padding:54px 0 30px;border-bottom:3px double var(--ink)}
+.masthead .rule-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  border-top:1px solid var(--ink);border-bottom:1px solid var(--line2);padding:8px 0;margin-bottom:30px}
+.masthead h1{font-family:var(--serif);font-weight:600;font-size:clamp(38px,5.6vw,64px);
+  line-height:1.02;letter-spacing:-.015em;margin:0 0 8px}
+.masthead h1 em{font-style:italic;font-weight:500}
+.dek{font-family:var(--serif);font-size:clamp(17px,2vw,21px);line-height:1.45;color:#33312b;max-width:62ch;margin:0}
+.lede-grid{display:grid;grid-template-columns:1.7fr 1fr;gap:44px;margin-top:28px}
+.lede-grid p{margin:0 0 12px;max-width:68ch}
+.constraints{border-left:1px solid var(--line2);padding-left:20px}
+.constraints h2{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin:2px 0 10px}
+.constraints ul{margin:0;padding:0;list-style:none;font-size:13px;color:#3c3a34}
+.constraints li{padding:5px 0;border-top:1px dotted var(--line2)}
+.constraints li:first-child{border-top:0}
+.decision{background:var(--ink);color:var(--paper);padding:14px 18px;margin-top:26px}
+.decision .kicker{color:#b9b3a3}
+.decision p{margin:4px 0 0;font-size:14px;max-width:95ch}
+.decision strong{color:#fff}
+
+/* ---------- control strip ---------- */
+.controls{position:sticky;top:0;z-index:40;background:var(--paper);
+  border-bottom:1px solid var(--ink);padding:10px 0}
+.controls .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.controls .lab{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)}
+.seg{display:inline-flex;border:1px solid var(--ink)}
+.seg button{appearance:none;background:transparent;border:0;border-right:1px solid var(--ink);
+  padding:7px 14px;font-size:13px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--paper2)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.tgl{appearance:none;background:transparent;border:1px solid var(--line2);padding:7px 12px;
+  font-size:13px;cursor:pointer}
+.tgl:hover{border-color:var(--ink)}
+.tgl[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.meter{display:flex;align-items:center;gap:8px;margin-left:auto}
+.meter .track{width:150px;height:8px;border:1px solid var(--ink);background:transparent;position:relative}
+.meter .fill{position:absolute;inset:0 auto 0 0;width:0%;background:var(--ink)}
+.meter .val{font-family:var(--mono);font-size:11px;min-width:76px;color:var(--mut)}
+.hint{font-size:12px;color:var(--mut);margin-top:7px}
+.hint code{font-family:var(--mono);font-size:11px;background:var(--paper2);padding:1px 5px}
+
+/* ---------- verdict ---------- */
+.verdict{border:1px solid var(--ink);margin:38px 0 6px;padding:26px 30px 8px;background:#faf8f2}
+.verdict h2{font-family:var(--serif);font-size:27px;margin:0 0 4px;font-weight:600}
+.verdict .sub{color:var(--mut);font-size:13px;margin:0 0 18px}
+.verdict ol{margin:0;padding:0;list-style:none;counter-reset:rank}
+.verdict li{display:grid;grid-template-columns:64px 1fr;gap:18px;padding:16px 0;border-top:1px solid var(--line)}
+.verdict .n{font-family:var(--serif);font-size:44px;line-height:1;color:var(--ink)}
+.verdict h3{font-family:var(--serif);font-size:19px;margin:0 0 4px;font-weight:600}
+.verdict h3 .no{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mut);margin-right:8px}
+.verdict p{margin:0;max-width:88ch;font-size:14px}
+.verdict .defer{border-top:1px solid var(--line);padding:14px 0 20px 82px;font-size:13px;color:#45423a;max-width:none}
+@media(max-width:700px){.verdict .defer{padding-left:0}.verdict li{grid-template-columns:44px 1fr}}
+
+/* ---------- concepts ---------- */
+.toc{display:flex;flex-wrap:wrap;gap:6px 18px;padding:20px 0 4px;font-family:var(--mono);font-size:11.5px}
+.toc a{text-decoration:none;color:var(--mut)}
+.toc a:hover{color:var(--ink);text-decoration:underline}
+.concept{padding:52px 0 58px;border-top:2px solid var(--ink)}
+.concept .head{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin-bottom:6px}
+.concept .num{font-family:var(--serif);font-size:54px;line-height:.9;font-weight:600}
+.concept h2{font-family:var(--serif);font-size:33px;margin:0;font-weight:600;letter-spacing:-.01em}
+.badge{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  border:1px solid var(--ink);padding:4px 8px}
+.badge.solid{background:var(--ink);color:var(--paper)}
+.badge.warn{border-style:dashed}
+.thesis{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.4;color:#2f2d27;
+  margin:4px 0 22px;max-width:72ch}
+.body-grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(260px,1fr);gap:38px;align-items:start}
+.concept.flip .body-grid{grid-template-columns:minmax(260px,1fr) minmax(0,1.62fr)}
+.concept.flip .screen-col{order:2}.concept.flip .meta-col{order:1}
+@media(max-width:920px){.body-grid,.concept.flip .body-grid{grid-template-columns:1fr}
+  .concept.flip .screen-col{order:1}.concept.flip .meta-col{order:2}.lede-grid{grid-template-columns:1fr}}
+
+/* simulated Mac desktop */
+.screen{position:relative;background:var(--desk);border:1px solid #000;border-radius:12px;
+  overflow:hidden;aspect-ratio:16/9.4;cursor:zoom-in;box-shadow:0 1px 0 rgba(0,0,0,.25),0 14px 34px rgba(26,26,23,.16)}
+.screen:hover{border-color:#000}
+.screen .wall{position:absolute;inset:0;background:
+  radial-gradient(120% 90% at 72% -10%,#26272c 0%,#17181b 46%,#101114 100%)}
+.screen .menubar{position:absolute;top:0;left:0;right:0;height:24px;display:flex;align-items:center;gap:14px;
+  padding:0 12px;background:rgba(255,255,255,.075);color:#9d9ea4;font-size:10px;
+  font-family:var(--sans);border-bottom:1px solid rgba(255,255,255,.05)}
+.screen .menubar b{color:#c9cad0;font-weight:600}
+.screen .menubar .right{margin-left:auto;font-family:var(--mono);font-size:9.5px}
+.screen .doc{position:absolute;left:50%;top:15%;width:47%;height:56%;transform:translateX(-50%);
+  background:#222328;border:1px solid rgba(255,255,255,.08);border-radius:8px;overflow:hidden}
+.screen .doc .bar{height:20px;background:#2b2c31;display:flex;align-items:center;gap:5px;padding:0 8px}
+.screen .doc .bar i{width:7px;height:7px;border-radius:50%;background:#4a4b51;display:block}
+.screen .doc .bar span{margin-left:8px;font-size:9px;color:#8b8c93;font-family:var(--mono)}
+.screen .doc .lines{position:absolute;inset:32px 16px 12px;
+  background:repeating-linear-gradient(to bottom,rgba(255,255,255,.16) 0 5px,transparent 5px 15px)}
+.screen .doc .caret{position:absolute;left:16px;bottom:14px;width:7px;height:11px;background:#d8d8de}
+.screen .dock{position:absolute;left:50%;bottom:7px;transform:translateX(-50%);display:flex;gap:6px;
+  padding:5px 8px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.1);border-radius:11px}
+.screen .dock i{width:20px;height:20px;border-radius:5px;background:#3a3b41;display:block}
+.screen .dock i:nth-child(2n){background:#2e2f35}
+.screen canvas.ov{position:absolute;left:0;right:0;bottom:0;width:100%;height:54%;display:block}
+.screen .tag{position:absolute;left:10px;top:32px;font-family:var(--mono);font-size:9px;
+  letter-spacing:.12em;color:rgba(255,255,255,.42);text-transform:uppercase}
+.screen .statechip{position:absolute;right:10px;top:32px;font-family:var(--mono);font-size:9px;
+  letter-spacing:.12em;color:#141414;background:rgba(255,255,255,.85);padding:3px 7px;border-radius:2px;text-transform:uppercase}
+.screen .expandhint{position:absolute;right:10px;bottom:8px;font-family:var(--mono);font-size:9px;
+  letter-spacing:.14em;color:rgba(255,255,255,.55);text-transform:uppercase}
+.figcap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:10px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase}
+.expandbtn{appearance:none;background:transparent;border:1px solid var(--ink);padding:6px 12px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.expandbtn:hover{background:var(--ink);color:var(--paper)}
+
+/* metadata column */
+.meta-col h3{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
+  margin:0 0 8px;color:var(--ink)}
+.states{margin:0 0 20px;border-top:1px solid var(--ink)}
+.states .r{display:grid;grid-template-columns:104px 1fr;gap:12px;padding:7px 0;border-bottom:1px dotted var(--line2)}
+.states dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);padding-top:2px}
+.states dd{margin:0;font-size:13px;line-height:1.45}
+.specs{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:18px}
+.spec .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);display:block;margin-bottom:5px}
+.dots{display:inline-flex;gap:3px;vertical-align:middle}
+.dots i{width:9px;height:9px;border:1px solid var(--ink);border-radius:50%;display:block}
+.dots i.on{background:var(--ink)}
+.spec .v{font-family:var(--mono);font-size:12px;margin-left:7px}
+.risk{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--ink);padding:3px 8px}
+.risk.med{border-style:dashed}.risk.high{background:var(--ink);color:var(--paper)}
+.uniq{font-size:13.5px;margin:0 0 18px;max-width:52ch}
+.uniq b{font-weight:600}
+.sketch{border-left:3px solid var(--ink);background:var(--paper2);padding:11px 14px;margin:0 0 16px}
+.sketch .k{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--mut);display:block;margin-bottom:5px}
+.sketch p{font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:0}
+.optrow{display:flex;align-items:center;gap:9px;font-size:12.5px;border:1px dashed var(--line2);padding:9px 12px}
+.optrow input{accent-color:#1a1a17;width:15px;height:15px}
+.note{font-size:12.5px;color:var(--mut);margin:10px 0 0}
+
+/* ---------- footer ---------- */
+footer{border-top:3px double var(--ink);padding:34px 0 60px;margin-top:10px}
+footer h2{font-family:var(--serif);font-size:24px;margin:0 0 10px}
+.foot-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+@media(max-width:820px){.foot-grid{grid-template-columns:1fr}}
+footer p,footer li{font-size:13.5px}
+footer ul{padding-left:18px;margin:8px 0}
+footer code{font-family:var(--mono);font-size:11.5px;background:var(--paper2);padding:1px 5px}
+.colophon{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:11px;color:var(--mut);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+/* ---------- focus view ---------- */
+.focus{position:fixed;inset:0;z-index:80;background:rgba(16,16,14,.94);display:none;
+  align-items:center;justify-content:center;padding:26px}
+.focus.open{display:flex}
+.focus .panel{width:min(1120px,96vw)}
+.focus .screen{aspect-ratio:16/8.6;cursor:default}
+.focus .cap{display:flex;align-items:flex-start;gap:20px;color:var(--paper);margin-top:16px;flex-wrap:wrap}
+.focus .cap h2{font-family:var(--serif);font-size:26px;margin:0}
+.focus .cap p{margin:4px 0 0;color:#c9c4b6;font-size:13.5px;max-width:80ch}
+.focus .close{margin-left:auto;appearance:none;background:transparent;color:var(--paper);
+  border:1px solid var(--paper);padding:8px 16px;font-family:var(--mono);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;flex:none}
+.focus .close:hover{background:var(--paper);color:var(--ink)}
+body.locked{overflow:hidden}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead"><div class="wrap">
+  <div class="rule-top">
+    <span class="kicker">Buddadawg &middot; Design exploration</span>
+    <span class="kicker">macOS dictation overlay &middot; Bottom edge &middot; 240 pt</span>
+    <span class="kicker">10 directions &middot; round two &middot; owner-picked axes</span>
+  </div>
+  <h1>Ten more ways for a voice<br>to <em>glow at the edge.</em></h1>
+  <p class="dek">Second round of animated directions for the Buddadawg dictation overlay,
+  rebuilt around the owner&rsquo;s chosen axes: <strong>voice art</strong> (the voice made
+  visible), <strong>ambient minimal</strong> (barely-there light), and
+  <strong>instrument</strong> (precise, calibrated motion). Grayscale throughout;
+  a single warm accent marks the pasted state. Every preview is live and driven by
+  the same simulated voice as round one.</p>
+
+  <div class="lede-grid">
+    <div>
+      <p>Round one explored abstract grammars (shorelines, terrain, seismographs) and
+      was rejected wholesale. This round hews to three axes the owner picked:
+      <strong>voice art</strong> &mdash; the voice made visible as ribbon, signature or
+      waveform; <strong>ambient minimal</strong> &mdash; barely-there fields of light;
+      <strong>instrument</strong> &mdash; precise calibrated motion like a scope, gauge
+      or comb. All ten share the same simulated voice and state controls as round
+      one. Click any desktop to inspect it large.</p>
+    </div>
+    <aside class="constraints">
+      <h2>Ground rules (from the code)</h2>
+      <ul>
+        <li>Panel: full screen width &times; 240 pt, glow at zero by 221 pt &mdash; no visible edge, ever.</li>
+        <li>One fullscreen triangle, half-res, 120 Hz, renders only while visible; fails dark.</li>
+        <li>Signals: <b>level</b> (rise 20/s, fall 6/s), <b>swell</b> (7/s, 3.5/s), integrated voice-warped phases.</li>
+        <li>Four states crossfade by weight: listening, transcribing, pasted (0.62 s), cancelled (0.20 s).</li>
+        <li>Colour rule for this round: <b>grayscale normally; a warm amber accent
+        appears only in the pasted state</b> &mdash; the moment the dictation lands.</li>
+        <li>No text, icons, bars or meters in the overlay. No springs, no overshoot. Reduced Motion honoured.</li>
+      </ul>
+    </aside>
+  </div>
+
+  <div class="decision">
+    <span class="kicker">Owner decision &middot; round two</span>
+    <p>Round one&rsquo;s ten abstract directions were rejected wholesale. This round was
+    scoped by the owner to three poles &mdash; <strong>voice art, ambient minimal,
+    instrument</strong> &mdash; with <strong>grayscale + a warm accent only on the
+    pasted/done moment</strong>. Concepts here are judged against Grain Horizon
+    (still shipping, still the control to beat) on the same simulated voice.</p>
+  </div>
+</div></header>
+
+<div class="controls" id="controls"><div class="wrap">
+  <div class="row">
+    <span class="lab" id="state-lab">Overlay state</span>
+    <div class="seg" role="group" aria-labelledby="state-lab">
+      <button type="button" data-state="listening" aria-pressed="true">Listening</button>
+      <button type="button" data-state="transcribing" aria-pressed="false">Transcribing</button>
+      <button type="button" data-state="pasted" aria-pressed="false">Pasted</button>
+      <button type="button" data-state="cancelled" aria-pressed="false">Cancelled</button>
+    </div>
+    <button type="button" class="tgl" id="btn-demo" aria-pressed="false">Demo cycle</button>
+    <button type="button" class="tgl" id="btn-pause" aria-pressed="false">Pause motion</button>
+    <button type="button" class="tgl" id="btn-reduce" aria-pressed="false">Reduce motion</button>
+    <div class="meter" aria-hidden="true">
+      <span class="lab">Sim voice</span>
+      <div class="track"><div class="fill" id="meter-fill"></div></div>
+      <span class="val" id="meter-val">level 0.00</span>
+    </div>
+  </div>
+  <p class="hint">Pasted and Cancelled play once, then return to Listening &mdash; slowed ~2&times; here
+  for inspection (product: 0.62 s / 0.20 s). <b>Demo cycle</b> mirrors the app&rsquo;s <code>--demo</code> loop.
+  Keys: <code>1&ndash;4</code> states, <code>Space</code> pause, <code>Esc</code> close focus view.</p>
+</div></div>
+
+<main class="wrap">
+  <section class="verdict" aria-labelledby="verdict-h">
+    <span class="kicker">Recommendation</span>
+    <h2 id="verdict-h">Top three, ranked</h2>
+    <p class="sub">Scored for: unique &amp; ownable &middot; peripheral calm &middot; OG-compatible
+    (grayscale, bottom-edge, grain-friendly) &middot; implementable inside today&rsquo;s
+    one-triangle shader and <i>PhaseClock</i> without new passes or buffers.</p>
+    <ol>
+      <li><span class="n">1</span><div>
+        <h3><span class="no">02</span>Signature &mdash; every dictation leaves a mark</h3>
+        <p>The most ownable idea on the page: the phrase literally draws itself as an
+        abstract pen-stroke along the bottom edge &mdash; pressure and wander driven by
+        the voice, so no two dictations look alike. It turns the overlay from a status
+        light into a receipt: you can see the shape of what you just said. Cheap to
+        render (a polyline), impossible to confuse with any other app, and the warm
+        accent on paste makes the completed signature feel signed and done.</p>
+      </div></li>
+      <li><span class="n">2</span><div>
+        <h3><span class="no">01</span>Silk Ribbon &mdash; voice as liquid light</h3>
+        <p>The most beautiful literal read of the voice: layered flowing ribbons whose
+        undulation <em>is</em> the envelope, silk rather than waveform. It keeps
+        Grain Horizon&rsquo;s additive-light grammar but replaces peaks-and-grain with
+        continuous cloth-like motion &mdash; quieter in peripheral vision, richer up
+        close. Moderate shader cost (a few summed sines per pixel, same pass).</p>
+      </div></li>
+      <li><span class="n">3</span><div>
+        <h3><span class="no">04</span>Pilot Lamp &mdash; one breathing light</h3>
+        <p>The calmest option: a single soft lamp at bottom-centre that swells with the
+        voice, heartbeats while transcribing, and flashes warm when the text lands.
+        Almost zero peripheral distraction, trivially cheap, and the pasted ring gives
+        the accent somewhere meaningful to live. Its risk is thinness &mdash; it may
+        read as &ldquo;just a glow&rdquo; unless the breathing is tuned beautifully.</p>
+      </div></li>
+    </ol>
+    <p class="defer"><b>Watch:</b> 05 Scope Trail and 08 Sonar Rings are the strongest
+    instrument entries but trail-buffer history is new state the shader doesn&rsquo;t
+    have today &mdash; they need a small ring buffer or a second pass. 06 VU Arc and
+    07 Frequency Comb are pure fragment-shader swaps (cheap) but flirt with the
+    &ldquo;no meters&rdquo; rule; judge whether they read as instruments or gauges.
+    03 Aurora Veil and 10 Mist Fields are the ambient pair &mdash; safest, subtlest,
+    and the most likely to be called &ldquo;same as before but blurrier.&rdquo;</p>
+  </section>
+
+  <nav class="toc" id="toc" aria-label="Concepts"></nav>
+  <div id="concepts"></div>
+</main>
+
+<footer><div class="wrap">
+  <h2>How to read these previews</h2>
+  <div class="foot-grid">
+    <div>
+      <p>Each desktop is a scale fiction: the overlay band stands in for the real
+      240 pt panel, drawn over menu bar, document and Dock exactly as the
+      status-bar-level panel composites in the product. Brightness here is
+      illustrative &mdash; the shipping shader caps coverage at <code>alpha = G &times; .85</code>,
+      premultiplied, so the wallpaper always shows through.</p>
+      <p>The simulated voice is shared by all ten previews: a phrase gate
+      (2&ndash;4 s of speech, 0.6&ndash;1.4 s of pause) multiplied by syllabic bursts near
+      4&ndash;7 Hz, then smoothed with the app&rsquo;s constants &mdash; level rises at 20/s
+      and falls at 6/s; swell at 7/s and 3.5/s. Animation phases are integrated
+      (<code>shaftTime += dt&thinsp;&times;&thinsp;(1 + 1.5&thinsp;level)</code>), never
+      <code>sin(elapsed &times; f(level))</code>, mirroring <code>BarkCore.PhaseClock</code>.</p>
+    </div>
+    <div>
+      <p><b>Implementation sketches</b> assume today&rsquo;s contract unless stated:
+      one fullscreen triangle; uniforms <code>res, dpr, t, lvl, show, ph, swell,
+      tShaft, tBump, reduce, s[4]</code>; half-res drawable; grayscale intensity
+      <code>G</code> computed first and returned premultiplied. &ldquo;No new uniforms&rdquo;
+      means a concept can ship as a shader-body swap behind the existing
+      <code>show(_:)</code> / <code>level</code> interface.</p>
+      <ul>
+        <li><b>Difficulty</b> 1 = shader-body swap &middot; 3 = new CPU signal or instancing &middot; 5 = new render architecture.</li>
+        <li><b>Distraction risk</b> judges motion in peripheral vision at 60&ndash;120 cm, mid-sentence, eyes on text.</li>
+        <li>Reduced Motion (system setting or the toggle above) damps decorative phase advance to 15%, as in the app; state timing stays real-time.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="colophon">
+    <span>Buddadawg &middot; overlay-concepts-v2.html &middot; round two &middot; single file, no external assets &middot; works from file://</span>
+    <span>Baseline: Sources/Buddadawg/Overlay.swift &middot; Round one: overlay-concepts.html</span>
+  </div>
+</div></footer>
+
+<div class="focus" id="focus" role="dialog" aria-modal="true" aria-labelledby="focus-title" hidden>
+  <div class="panel">
+    <div class="screen" id="focus-screen">
+      <div class="wall"></div>
+      <div class="menubar"><b>Finder</b><span>File</span><span>Edit</span><span>View</span>
+        <span class="right">Buddadawg &middot; focus view</span></div>
+      <div class="doc"><div class="bar"><i></i><i></i><i></i><span>notes.md</span></div>
+        <div class="lines"></div><div class="caret"></div></div>
+      <div class="dock"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <span class="tag">240 pt &middot; full width &middot; click-through</span>
+      <span class="statechip" data-chip>Listening</span>
+      <canvas class="ov" id="focus-canvas"></canvas>
+    </div>
+    <div class="cap">
+      <div><h2 id="focus-title"></h2><p id="focus-thesis"></p></div>
+      <button type="button" class="close" id="focus-close">Close &middot; Esc</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Buddadawg overlay concepts — shared simulation
+   One simulated voice drives every preview. Smoothing rates, phase
+   integration and state-weight blending mirror Overlay.swift /
+   BarkCore.PhaseClock so concepts are judged on the app's signals.
+   ===================================================================== */
+var TAU = Math.PI * 2;
+function clamp(x, a, b) { return x < a ? a : (x > b ? b : x); }
+function lerp(a, b, k) { return a + (b - a) * k; }
+function ease(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+function h1(n) { var s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+function vn(x) { var i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return lerp(h1(i), h1(i + 1), u); }
+function gauss(d) { return Math.exp(-d * d); }
+
+/* The shipping shader's seven peaks, as a 1-D profile over x in [-1,1].
+   Several concepts reuse it deliberately: it is the OG's fingerprint. */
+function bumpsP(x, E) {
+  var b = 0, i, c, w, bo, d;
+  for (i = 0; i < 7; i++) {
+    c = (i - 3) * 0.24 + 0.08 * Math.sin(E.t * (0.31 + 0.07 * i) + i * 1.7);
+    w = 0.07 + 0.06 * h1(i * 3.1 + 0.7);
+    bo = 0.5 + 0.5 * Math.sin(E.bumpT * (0.55 + 0.23 * i) + i * 2.3);
+    d = (x - c) / w;
+    b += bo * bo * gauss(d);
+  }
+  return b * Math.exp(-x * x * 1.6);
+}
+function sinkK(E) { return 1 - E.w[3] * ease(E.ph / 0.25); } /* cancelled: sinks away */
+
+/* ---------------- concept catalogue (copy) ---------------- */
+var CONCEPTS = [
+{ id:"c01", name:"Silk Ribbon", badge:["Top 3 · #2","solid"], rank:2,
+  thesis:"Voice as liquid light: three layered ribbons rise from the bottom edge, their crest undulation literally the speech envelope.",
+  states:{ l:"Ribbons climb and ripple with swell and syllables; louder phrases lift the whole cloth higher.",
+           t:"Undulation dampens and the ribbons settle low — cloth coming to rest, not a spinner.",
+           p:"The ribbons lift a touch and flush warm amber — the cloth is presented.",
+           c:"Everything sinks back below the edge and thins to nothing." },
+  diff:2, risk:"low",
+  uniq:"<b>Uniqueness:</b> the most beautiful literal read of the voice — continuous cloth instead of Grain Horizon's discrete peaks. Ownable because nobody else renders speech as fabric; it keeps the additive-light grammar so it still feels like Buddadawg.",
+  sketch:"Fragment-only: crest height per strand = bumps(x)·swell + summed travelling sines on tShaft weighted by lvl; fill below crest with a vertical alpha gradient, stroke the crest line. ~3 strands × same uniforms, one pass, no buffers.",
+  draw:drawN1, update:null },
+
+{ id:"c02", name:"Signature", badge:["Top 3 · #1","solid"], rank:1,
+  thesis:"Every dictation literally signs itself: a pen-stroke scrawl draws left-to-right along the edge, its wander and pressure driven by the voice.",
+  states:{ l:"The pen draws — syllabic bursts push the stroke up and down; onsets thicken it.",
+           t:"The pen lifts; the finished signature holds, then slowly fades.",
+           p:"The completed mark flushes warm amber — signed and delivered.",
+           c:"The stroke drains away; the page is blank for the next sentence." },
+  diff:3, risk:"low",
+  uniq:"<b>Uniqueness:</b> the overlay becomes a receipt — no two dictations produce the same mark, and the shape of what you said is visible at a glance. Dictation apps show waveforms; nobody shows a signature.",
+  sketch:"Needs a point history the shader lacks today: ~1k vec4 (x,y,pressure,age) ring buffer, drawn as a polyline — either a second tiny pass or a texture the fragment stage strokes via SDF. CPU can also pre-tessellate to a line-list vertex buffer; still one extra draw.",
+  draw:drawN2, update:updateN2 },
+
+{ id:"c03", name:"Aurora Veil", badge:null,
+  thesis:"Slow curtains of light hang and breathe over the bottom edge — speech made into weather, not waveform.",
+  states:{ l:"Veils drift on integrated phases; swell brightens and lifts them, syllables shimmer their folds.",
+           t:"The drift slows and the veils dim to a held breath.",
+           p:"A warm sheen sweeps the veils once, then they settle back to grey.",
+           c:"The curtains thin and slip below the edge." },
+  diff:2, risk:"low",
+  uniq:"<b>Uniqueness:</b> the most ambient entry — closer to light-through-fog than to any meter or mark. Its risk is the honest one: it may be too close to 'a glow' to justify existing.",
+  sketch:"Fragment-only: 4 curtains, each a Gaussian in x around a drifting centre, height ∝ swell, top edge wavy on t; vertical alpha gradient fill, 'lighter' accumulate. Same uniforms, one pass.",
+  draw:drawN3, update:null },
+
+{ id:"c04", name:"Pilot Lamp", badge:["Top 3 · #3","solid"], rank:3,
+  thesis:"One soft lamp at bottom-centre breathes with your voice — a pilot light for the dictation instrument.",
+  states:{ l:"The lamp swells with the voice and flickers gently at syllable rate.",
+           t:"A slow heartbeat pulse — two soft thumps — while the words are thought.",
+           p:"The lamp flashes warm and throws one expanding ring — the light says it's done.",
+           c:"The lamp dims to a dying ember, then out." },
+  diff:1, risk:"low",
+  uniq:"<b>Uniqueness:</b> radical minimalism as a feature: a single radial gradient and a ring. Impossible to find fault with peripherally, and the heartbeat/pasted-ring state vocabulary is legible without any text.",
+  sketch:"Trivial: one radial gradient (radius ∝ swell, intensity ∝ lvl+swell) + hot core + arc ring on paste phase + heartbeat term sin^10 while w1. Cheapest concept on the page — a shader-body swap.",
+  draw:drawN4, update:null },
+
+{ id:"c05", name:"Scope Trail", badge:null,
+  thesis:"A Lissajous figure traced by your voice — the scope's beam draws a knot that tightens when you speak calmly and blooms when you don't.",
+  states:{ l:"The figure draws itself, radii breathing with swell and level — speech as a curve on an instrument.",
+           t:"The beam parks; the completed figure hangs, fading at the edges.",
+           p:"The knot flashes warm and expands a touch — the reading is taken.",
+           c:"The trace collapses to its centre and the scope goes dark." },
+  diff:3, risk:"med",
+  uniq:"<b>Uniqueness:</b> hypnotic and instrument-true — an oscilloscope nobody else ships. But a moving bright dot is exactly what peripheral vision tracks; the trail must stay thin and slow or it becomes a toy.",
+  sketch:"Needs trail history (~120 vec2 ring buffer) composited as a fading polyline plus head glow — a second small pass or texture. Figure params (two integrated phases, radii from swell/lvl) live in existing uniforms.",
+  draw:drawN5, update:updateN5 },
+
+{ id:"c06", name:"VU Arc", badge:null,
+  thesis:"A precision gauge at the screen's edge: a needle sweeps a calibrated arc with your level, ticks marking the scale — the instrument, not the music.",
+  states:{ l:"The needle tracks loudness with fast attack; the arc behind it fills warm-grey.",
+           t:"The needle rests at idle and the scale dims — instrument on standby.",
+           p:"The whole arc flashes amber once — needle pegged, reading confirmed.",
+           c:"The needle drops to zero and the dial goes dark." },
+  diff:2, risk:"med",
+  uniq:"<b>Uniqueness:</b> the most legible option — you always know how loud you are. But it flirts with the 'no meters' rule; it only survives if it reads as an instrument bezel, not an audio level meter.",
+  sketch:"Fragment-friendly: two SDF arcs (track + active), needle angle = smoothed lvl (one CPU float), 9 tick marks. All analytic — no textures, one pass. Fastest 'instrument' to ship.",
+  draw:drawN6, update:null },
+
+{ id:"c07", name:"Frequency Comb", badge:null,
+  thesis:"A harp of fine teeth along the edge — each strand vibrating at its own rate, the whole bed shimmering with syllabic detail.",
+  states:{ l:"Teeth rise and fall on independent drifting phases; loud phrases raise the whole bed.",
+           t:"The bed settles to a low resting comb — strings at rest.",
+           p:"Every tooth flushes warm at once — the chord resolves.",
+           c:"The comb folds flat into the edge." },
+  diff:2, risk:"med",
+  uniq:"<b>Uniqueness:</b> precise, musical, mechanical — closer to a harmonium than a waveform. Risk: 56 moving hairlines may read as an equalizer, which is the one visual cliché this category owns already.",
+  sketch:"Fragment loop of ~56 teeth: height = vn(i·k + tShaft·fᵢ) shaped by swell/lvl; 1-px strokes from the edge. Unrolled loop, same uniforms, one pass — cheap but busy.",
+  draw:drawN7, update:null },
+
+{ id:"c08", name:"Sonar Rings", badge:null,
+  thesis:"Each syllable onset pings a thin ring up from the edge — speech as sonar returning from the bottom of the screen.",
+  states:{ l:"Rings spawn on vocal onsets at varied x, expand and dissolve — the rhythm of your sentence made spatial.",
+           t:"No new pings; existing rings finish expanding and fade — the water goes quiet.",
+           p:"One large warm ring blooms from centre — the ping that says 'received'.",
+           c:"All rings collapse inward and die at once." },
+  diff:3, risk:"low",
+  uniq:"<b>Uniqueness:</b> onset-triggered rings give the overlay a true event grammar — it responds to syllables, not just loudness. Distinctive without being noisy if rings stay thin and sparse.",
+  sketch:"Needs an onset signal (level-derivative threshold on CPU — cheap, same one Underline needed) plus a small ring buffer (~8 vec4: x, radius, birth, alpha) as uniforms or a tiny texture; fragment stage strokes SDF circles. One pass.",
+  draw:drawN8, update:updateN8 },
+
+{ id:"c09", name:"Voiceprint", badge:null,
+  thesis:"A soundprint of the current phrase: a mirrored filled waveform drawn live and held like a specimen — the literal shape of your sentence.",
+  states:{ l:"The print draws itself sample by sample, mirrored top and bottom like an audio editor's waveform — but soft, glowing, alive.",
+           t:"The drawing stops; the completed print holds, edges cooling.",
+           p:"The whole specimen flushes warm — filed and done.",
+           c:"The print fades out of existence." },
+  diff:3, risk:"low",
+  uniq:"<b>Uniqueness:</b> the most literal voice-art here — what you see IS the audio. Familiar grammar (everyone knows a waveform) executed in a grammar nobody ships: soft, mirrored, glowing rather than clinical.",
+  sketch:"Needs a level history buffer (~150 floats — a small texture or uniform array) sampled across x; fragment stage fills |y−base| < hist(x)·amp as an SDF lens with soft edges. One pass, new buffer.",
+  draw:drawN9, update:updateN9 },
+
+{ id:"c10", name:"Mist Fields", badge:null,
+  thesis:"Large slow drifts of light moving through fog at the edge — the quietest thing on the page, barely a picture at all.",
+  states:{ l:"Fields breathe and drift; swell thickens the mist, syllables catch it briefly.",
+           t:"Drift slows to near-stillness; the mist dims and holds.",
+           p:"A single warm wash passes through the fields once.",
+           c:"The mist drains away to nothing." },
+  diff:1, risk:"low",
+  uniq:"<b>Uniqueness:</b> honesty as a risk: this is the safest possible overlay — and possibly indistinguishable from Grain Horizon at a glance. Included because 'barely there' was an explicit axis; judge whether it earns its existence.",
+  sketch:"Trivial: 3 radial gradients at drifting centres, intensity ∝ swell/lvl, 'lighter' accumulate, one warm pass on paste. Cheapest alongside Pilot Lamp — pure shader-body swap.",
+  draw:drawN10, update:null }
+];
+
+/* =====================================================================
+   Renderers. Coordinates: canvas CSS pixels, origin top-left, the
+   canvas is the 240 pt band. E = shared environment (see loop).
+   Stateful concepts keep normalised stores in S so the same store
+   renders correctly in both the inline and focus canvases.
+   ===================================================================== */
+
+/* ---- 01 Grain Horizon: per-pixel port of Overlay.swift fmain ---- */
+var GH_C=[-520,-150,230,560], GH_W=[110,150,120,90], GH_P=[0.30,0.85,0.42,0.20],
+    GH_SP=[0.13,0.071,0.097,0.053], GH_SW=[70,110,90,60], GH_PH=[0,2.1,4.3,1.2];
+function draw01(ctx, W, H, E, S) {
+  var f = 3, w2 = Math.max(8, Math.ceil(W / f)), h2 = Math.max(8, Math.ceil(H / f));
+  var key = w2 + "x" + h2;
+  if (!S.cvs) S.cvs = {};
+  var cv = S.cvs[key];
+  if (!cv) { cv = document.createElement("canvas"); cv.width = w2; cv.height = h2; S.cvs[key] = cv; }
+  var cx2 = cv.getContext("2d");
+  var img = cx2.createImageData(w2, h2), px = img.data;
+  var lvl = E.lvl, swell = E.swell, ph = E.ph, step = Math.floor(E.t * 24);
+  var gAmp = E.reduced ? 0.04 : 0.3;
+  var ix, iy, i, j;
+  for (iy = 0; iy < h2; iy++) {
+    var py = (iy / (h2 - 1)) * 240;              /* points up from edge */
+    var topFade = 1 - ease((py - 96) / 125);
+    if (topFade <= 0.001) continue;
+    for (ix = 0; ix < w2; ix++) {
+      var ptx = (ix / (w2 - 1) - 0.5) * 1400;    /* virtual screen points */
+      var xn = ptx / 700;
+      var a = ptx * 0.94 - py * 0.34;
+      var sh = 0;
+      for (j = 0; j < 4; j++) {
+        var c0 = GH_C[j] + GH_SW[j] * Math.sin(E.shaftT * GH_SP[j] + GH_PH[j]);
+        var dd = (a - c0) / (GH_W[j] * (1 + 0.25 * lvl));
+        sh += GH_P[j] * gauss(dd);
+      }
+      sh *= 0.75 + 0.5 * vn(a / 140 + E.t * 0.15);
+      var sTot = 0.45 + 1.1 * sh;
+      var bp = 0;
+      for (j = 0; j < 7; j++) {
+        var cj = (j - 3) * 105 + 35 * Math.sin(E.t * (0.31 + 0.07 * j) + j * 1.7);
+        var wj = 30 + 26 * h1(j * 12.9 + 3.1);
+        var bo = 0.5 + 0.5 * Math.sin(E.bumpT * (0.55 + 0.23 * j) + j * 2.3);
+        var dj = (ptx - cj) / wj;
+        bp += bo * bo * gauss(dj);
+      }
+      var top = 4 + 200 * swell * bp * Math.exp(-xn * xn * 4);
+      var q = py / Math.max(top, 1);
+      var spire = Math.exp(-q * q * 1.6) * (0.6 + 0.4 * Math.exp(-q));
+      var wid = Math.exp(-xn * xn * 2.2);
+      var lG = wid * sTot * (Math.exp(-py / (14 + 55 * lvl)) + 0.85 * spire) * (0.35 + 0.65 * lvl);
+      var wG = Math.exp(-xn * xn / (0.04 + 0.45 * (1 - ease(ph / 0.22)))) * Math.exp(-py / 20) * 0.95;
+      var dG = wid * Math.exp(-py / (5 + 40 * ease(ph / 0.3))) * (1 - ease(ph / 0.6)) * 1.15;
+      var cG = lG * (1 - ease(ph / 0.18));
+      var G = E.w[0] * lG + E.w[1] * wG + E.w[2] * dG + E.w[3] * cG;
+      G *= (1 - gAmp * 0.5) + gAmp * h1(ix * 37.1 + iy * 17.7 + step * 101.3);
+      G = clamp(G * topFade, 0, 1);
+      var o = ((h2 - 1 - iy) * w2 + ix) * 4;
+      var v = Math.round(238 * Math.pow(G, 0.72));
+      px[o] = v; px[o + 1] = v; px[o + 2] = v;
+      px[o + 3] = Math.round(clamp(G * 1.15, 0, 1) * 230);
+    }
+  }
+  cx2.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(cv, 0, 0, W, H);
+}
+
+/* ---- 02 Tide Line ---- */
+function tideY(xn, E, H, ampScale) {
+  var m = (6 + E.swell * H * 0.58) * ampScale;
+  var prof = 0.45 + 0.85 * bumpsP(xn, E);
+  var rip = (vn(xn * 6 + E.t * 0.8) - 0.5) * (2 + E.lvl * 7) * (1 - E.w[1]);
+  return H - 4 - m * prof + rip;
+}
+function update02(E, S) {
+  if (!S.ghosts) { S.ghosts = []; S.nextGhost = 0; S.peak = 1; }
+  if (E.state === "listening" && E.rt > S.nextGhost && E.swell > 0.12) {
+    var pts = [], i, xn;
+    for (i = 0; i <= 40; i++) { xn = i / 40 * 2 - 1; pts.push(tideY(xn, E, 100, 1) / 100); }
+    S.ghosts.push({ pts: pts, born: E.rt });
+    if (S.ghosts.length > 5) S.ghosts.shift();
+    S.nextGhost = E.rt + 0.55;
+  }
+  if (E.state === "listening") {
+    var y = tideY(0, E, 100, 1) / 100;
+    if (y < S.peak) S.peak = y;
+  }
+  if (E.state === "cancelled") { S.ghosts.length = 0; S.peak = 1; }
+  if (E.state === "pasted" && S.last !== "pasted") S.stamp = S.peak;
+  if (E.state === "listening" && S.last !== "listening") S.peak = 1;
+  S.last = E.state;
+}
+function draw02(ctx, W, H, E, S) {
+  var ghosts = S.ghosts || [], i, k, xn, x, y;
+  for (i = 0; i < ghosts.length; i++) {
+    var age = (E.rt - ghosts[i].born) / 4;
+    if (age >= 1) continue;
+    ctx.beginPath();
+    for (k = 0; k < ghosts[i].pts.length; k++) {
+      x = k / (ghosts[i].pts.length - 1) * W; y = ghosts[i].pts[k] * H;
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = "rgba(255,255,255," + (0.16 * (1 - age)).toFixed(3) + ")";
+    ctx.lineWidth = 1; ctx.stroke();
+  }
+  var amp = sinkK(E);
+  ctx.beginPath(); ctx.moveTo(0, H);
+  for (x = 0; x <= W; x += 5) { xn = x / W * 2 - 1; ctx.lineTo(x, tideY(xn, E, H, amp)); }
+  ctx.lineTo(W, H); ctx.closePath();
+  var gr = ctx.createLinearGradient(0, H * 0.3, 0, H);
+  gr.addColorStop(0, "rgba(255,255,255,0)");
+  gr.addColorStop(1, "rgba(255,255,255," + (0.16 + 0.14 * E.lvl).toFixed(3) + ")");
+  ctx.fillStyle = gr; ctx.fill();
+  ctx.beginPath();
+  for (x = 0; x <= W; x += 4) {
+    xn = x / W * 2 - 1;
+    var yy = tideY(xn, E, H, amp);
+    yy = lerp(yy, H * 0.66, E.w[1] * 0.85);
+    if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+  }
+  ctx.setLineDash(E.w[1] > 0.5 ? [7, 6] : []);
+  ctx.strokeStyle = "rgba(255,255,255," + (0.55 + 0.4 * E.lvl).toFixed(3) + ")";
+  ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]);
+  if (E.w[2] > 0.05 && S.stamp !== undefined) {
+    var a = E.w[2] * (1 - ease(E.ph / 0.6));
+    ctx.beginPath(); ctx.moveTo(W * 0.12, S.stamp * H); ctx.lineTo(W * 0.88, S.stamp * H);
+    ctx.strokeStyle = "rgba(255,255,255," + (0.9 * a).toFixed(3) + ")";
+    ctx.lineWidth = 2.2; ctx.stroke();
+  }
+}
+
+/* ---- 03 Needle & Drum ---- */
+function update03(E, S) {
+  if (!S.hist) { S.hist = []; S.scroll = 0; }
+  if (E.dt <= 0) return;
+  S.scroll += E.dt * 34 * (1 - E.w[1] * 0.82);
+  if (E.state === "pasted" && S.last !== "pasted") S.hist.push(2);
+  else if (E.state === "cancelled") S.hist.push(NaN);
+  else S.hist.push(E.state === "transcribing" ? 0.02 : E.raw);
+  while (S.hist.length > 280) S.hist.shift();
+  S.last = E.state;
+}
+function draw03(ctx, W, H, E, S) {
+  var hist = S.hist || [], y0 = H * 0.68, i, x, y, v;
+  ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
+  var off = (S.scroll || 0) % 26;
+  ctx.beginPath();
+  for (x = -off; x < W; x += 26) { ctx.moveTo(x, H * 0.1); ctx.lineTo(x, H * 0.94); }
+  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W, y0);
+  ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.stroke();
+  var stepX = W / 150, pen = false;
+  ctx.beginPath();
+  for (i = 0; i < hist.length; i++) {
+    v = hist[i]; x = W - 10 - (hist.length - 1 - i) * stepX;
+    if (x < -4) continue;
+    if (v !== v) { pen = false; continue; }            /* NaN gap */
+    if (v === 2) {                                       /* pasted tick */
+      ctx.moveTo(x, y0 - H * 0.34); ctx.lineTo(x, y0 + H * 0.1); pen = false; continue;
+    }
+    y = y0 - v * H * 0.5;
+    if (!pen) { ctx.moveTo(x, y); pen = true; } else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = "rgba(255,255,255,0.88)"; ctx.lineWidth = 1.4; ctx.stroke();
+  var ny = y0 - (E.state === "listening" ? E.raw : 0) * H * 0.5;
+  ctx.beginPath(); ctx.moveTo(W - 10, H * 0.08); ctx.lineTo(W - 10, H * 0.96);
+  ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath(); ctx.arc(W - 10, ny, 3, 0, TAU);
+  ctx.fillStyle = "#fff"; ctx.fill();
+  if (E.w[1] > 0.1) {
+    ctx.beginPath(); ctx.moveTo(W * 0.3, y0); ctx.lineTo(W * 0.7, y0);
+    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = "rgba(255,255,255," + (0.5 * E.w[1]).toFixed(3) + ")";
+    ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+
+/* ---- 04 Contour ---- */
+function draw04(ctx, W, H, E, S) {
+  var cx = W / 2, cy = H * 1.22 + (1 - sinkK(E)) * H * 0.5;
+  var contract = 1 - 0.42 * E.w[1];
+  var wob = (1 - E.w[1] * 0.9);
+  var ring, th;
+  for (ring = 13; ring >= 1; ring--) {
+    var rB = ring * H * 0.155 * contract;
+    var breathe = E.swell * H * 0.16 * Math.exp(-ring * 0.22) *
+                  (0.5 + 0.5 * Math.sin(E.bumpT * 0.85 - ring * 0.55));
+    ctx.beginPath();
+    for (th = Math.PI; th <= TAU + 0.001; th += 0.07) {
+      var rr = rB + breathe + rB * 0.13 * wob * (vn(th * 2.3 + ring * 3.7 + E.bumpT * 0.22) - 0.5)
+             + rB * 0.18 * E.swell * wob * (vn(th * 3.4 - E.t * 0.35 + ring * 1.3) - 0.5);
+      var x = cx + Math.cos(th) * rr * 1.9;
+      var y = cy + Math.sin(th) * rr;
+      if (th === Math.PI) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    var a = (0.52 * Math.exp(-ring * 0.13) + 0.06) * (0.45 + 0.55 * Math.max(E.swell, 0.15)) * sinkK(E);
+    ctx.strokeStyle = "rgba(255,255,255," + clamp(a, 0, 0.85).toFixed(3) + ")";
+    ctx.lineWidth = ring % 4 === 0 ? 1.5 : 1;
+    ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(cx, H - 4, 2.4, 0, TAU);
+  ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fill();
+  if (E.w[2] > 0.05) {
+    var pr = ease(E.ph / 0.6) * W * 0.52;
+    ctx.beginPath(); ctx.ellipse(cx, cy, pr * 1.9, pr, 0, Math.PI, TAU);
+    ctx.strokeStyle = "rgba(255,255,255," + (E.w[2] * (1 - ease(E.ph / 0.6)) * 0.95).toFixed(3) + ")";
+    ctx.lineWidth = 2; ctx.stroke();
+  }
+}
+
+/* ---- 05 Eclipse Limb ---- */
+function draw05(ctx, W, H, E, S) {
+  var R = W * 0.95;
+  var rise = (8 + E.swell * H * 0.6) * sinkK(E) * (1 - E.w[1] * 0.35);
+  rise += E.w[2] * Math.sin(ease(E.ph / 0.6) * Math.PI) * H * 0.12;
+  var cx = W / 2, cy = H + R - rise;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU);
+  ctx.fillStyle = "rgba(4,4,6,0.66)"; ctx.fill();
+  var ang = Math.asin(clamp((W / 2 + 30) / R, 0, 1)) * (1 - 0.68 * E.w[1]);
+  var a0 = -Math.PI / 2 - ang, a1 = -Math.PI / 2 + ang;
+  var flash = E.w[2] * (1 - ease(E.ph / 0.55));
+  var widths = [13, 7, 3.5, 1.6], alphas = [0.05, 0.10, 0.22, 0.62], k;
+  for (k = 0; k < 4; k++) {
+    ctx.beginPath(); ctx.arc(cx, cy, R, a0, a1);
+    ctx.strokeStyle = "rgba(255,255,255," + clamp(alphas[k] * (0.5 + 0.5 * E.swell) + flash * 0.35, 0, 1).toFixed(3) + ")";
+    ctx.lineWidth = widths[k] * (1 + flash * 0.8); ctx.stroke();
+  }
+  var i, n = 64;
+  ctx.beginPath();
+  for (i = 0; i <= n; i++) {
+    var th = a0 + (a1 - a0) * (i / n);
+    var len = (2 + E.lvl * 13 * vn(i * 1.7 + E.t * 2.2)) * (1 - E.w[1] * 0.7);
+    var x1 = cx + Math.cos(th) * R, y1 = cy + Math.sin(th) * R;
+    var x2 = cx + Math.cos(th) * (R + len), y2 = cy + Math.sin(th) * (R + len);
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+  }
+  ctx.strokeStyle = "rgba(255,255,255," + (0.16 + 0.3 * E.lvl).toFixed(3) + ")";
+  ctx.lineWidth = 1; ctx.stroke();
+}
+
+/* ---- 06 Rising Ash ---- */
+function ashSpawn(S, E, burst) {
+  var seed = S.seed = (S.seed || 0) + 1;
+  var cx = (h1(seed * 1.31) + h1(seed * 2.17)) / 2;         /* centre-weighted */
+  S.parts.push({ x: cx, y: 0.01, vy: (burst ? 0.45 : 0.13) + h1(seed * 3.7) * 0.16,
+                 life: 0, max: 2.2 + h1(seed * 5.1) * 1.6,
+                 size: 0.7 + h1(seed * 7.3) * 1.5, seed: seed * 1.97 });
+  var ci = clamp(Math.floor(cx * 40), 0, 39);
+  S.col[ci] = Math.min(S.col[ci] + 0.22, 1);
+}
+function update06(E, S) {
+  if (!S.parts) { S.parts = []; S.col = new Float32Array(40); S.acc = 0; }
+  if (E.dt <= 0) return;
+  if (E.state === "pasted" && S.last !== "pasted") {
+    var b; for (b = 0; b < 46; b++) ashSpawn(S, E, true);
+  }
+  S.acc += E.dt * (E.state === "listening" ? (3 + 130 * E.lvl + 26 * E.onset) : 0);
+  while (S.acc > 1) { S.acc -= 1; if (S.parts.length < 420) ashSpawn(S, E, false); }
+  var i, p, fall = E.w[3], hang = 1 - E.w[1] * 0.94;
+  for (i = S.parts.length - 1; i >= 0; i--) {
+    p = S.parts[i];
+    p.life += E.dt;
+    p.y += p.vy * hang * E.dt - fall * 0.5 * E.dt;
+    p.x += Math.sin(E.t * 1.8 + p.seed) * 0.0007;
+    if (p.life > p.max || p.y > 1.05 || p.y < -0.05) S.parts.splice(i, 1);
+  }
+  for (i = 0; i < 40; i++) S.col[i] *= Math.exp(-E.dt * 1.1);
+  S.last = E.state;
+}
+function draw06(ctx, W, H, E, S) {
+  var col = S.col, i;
+  if (col) {
+    var cw = W / 40;
+    for (i = 0; i < 40; i++) {
+      var hh = col[i] * H * 0.34;
+      if (hh < 1) continue;
+      var g = ctx.createLinearGradient(0, H - hh, 0, H);
+      g.addColorStop(0, "rgba(255,255,255,0)");
+      g.addColorStop(1, "rgba(255,255,255," + (col[i] * 0.28).toFixed(3) + ")");
+      ctx.fillStyle = g; ctx.fillRect(i * cw, H - hh, cw + 1, hh);
+    }
+  }
+  var parts = S.parts || [];
+  for (i = 0; i < parts.length; i++) {
+    var p = parts[i], fr = p.life / p.max;
+    var a = Math.sin(Math.PI * clamp(fr, 0, 1)) * 0.8;
+    ctx.beginPath();
+    ctx.arc(p.x * W, H - p.y * H - 2, p.size, 0, TAU);
+    ctx.fillStyle = "rgba(255,255,255," + a.toFixed(3) + ")";
+    ctx.fill();
+  }
+}
+
+/* ---- 07 Underline ---- */
+function update07(E, S) {
+  if (!S.ticks) { S.ticks = []; S.cursor = 0.04; S.gen = 0; S.cool = 0; }
+  if (E.dt <= 0) return;
+  S.cool -= E.dt;
+  if (E.state === "listening") {
+    S.cursor += E.dt * 0.055 * (0.4 + E.lvl);
+    if (E.onset > 0.45 && S.cool <= 0) {
+      S.ticks.push({ x: S.cursor, h: 0.1 + E.onset * 0.34, gen: S.gen, born: E.rt });
+      S.cool = 0.09;
+    }
+    if (S.cursor > 0.96) {
+      S.cursor = 0.04; S.gen++;
+      S.ticks = S.ticks.filter(function (t) { return t.gen >= S.gen - 1; });
+    }
+  }
+  if (E.state === "cancelled" && S.last !== "cancelled") S.struck = E.rt;
+  if (E.state === "listening" && (S.last === "pasted" || S.last === "cancelled")) {
+    S.ticks = []; S.cursor = 0.04; S.struck = 0;
+  }
+  S.endX = S.cursor;
+  S.last = E.state;
+}
+function draw07(ctx, W, H, E, S) {
+  var base = H * 0.8, i, t;
+  ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.04, base); ctx.lineTo(W * 0.96, base);
+  ctx.moveTo(W * 0.04, H * 0.42); ctx.lineTo(W * 0.96, H * 0.42);
+  ctx.stroke();
+  var ticks = S.ticks || [], fade = 1 - E.w[3] * 0.75;
+  for (i = 0; i < ticks.length; i++) {
+    t = ticks[i];
+    var rowY = t.gen === S.gen ? base : H * 0.42;
+    var a = (t.gen === S.gen ? 0.85 : 0.3) * fade;
+    var x = t.x * W, hh = t.h * H;
+    ctx.beginPath(); ctx.moveTo(x, rowY); ctx.lineTo(x, rowY - hh);
+    ctx.strokeStyle = "rgba(255,255,255," + a.toFixed(3) + ")";
+    ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, rowY - hh, 1.6, 0, TAU);
+    ctx.fillStyle = "rgba(255,255,255," + a.toFixed(3) + ")"; ctx.fill();
+  }
+  var blink = 0.35 + 0.65 * Math.abs(Math.sin(E.rt * (E.w[1] > 0.5 ? 4.2 : 1.6)));
+  if (E.state === "listening" || E.state === "transcribing") {
+    ctx.beginPath();
+    ctx.moveTo((S.cursor || 0.04) * W, base + 4); ctx.lineTo((S.cursor || 0.04) * W, base - 12);
+    ctx.strokeStyle = "rgba(255,255,255," + (0.8 * blink).toFixed(3) + ")";
+    ctx.lineWidth = 2; ctx.stroke();
+  }
+  if (E.w[2] > 0.05) {
+    var ex = lerp(0.04, Math.max(S.endX || 0.3, 0.2), ease(E.ph / 0.4));
+    ctx.beginPath(); ctx.moveTo(W * 0.04, base + 7); ctx.lineTo(W * ex, base + 7);
+    ctx.strokeStyle = "rgba(255,255,255," + (E.w[2] * (1 - ease(E.ph / 0.7)) * 0.95).toFixed(3) + ")";
+    ctx.lineWidth = 3; ctx.stroke();
+  }
+  if (E.w[3] > 0.05) {
+    ctx.beginPath();
+    ctx.moveTo(W * 0.05, base - H * 0.1); ctx.lineTo(W * (S.endX || 0.3), base - H * 0.16);
+    ctx.strokeStyle = "rgba(255,255,255," + (E.w[3] * 0.55).toFixed(3) + ")";
+    ctx.lineWidth = 1.6; ctx.stroke();
+  }
+}
+
+/* ---- 08 Ridge Lines ---- */
+function draw08(ctx, W, H, E, S) {
+  var N = 11, i, x, xn;
+  var flat = 1 - 0.82 * E.w[1] - 0.9 * E.w[2] * (1 - ease(E.ph / 0.5));
+  for (i = 0; i < N; i++) {
+    var baseY = lerp(H * 0.16 + i * H * 0.078, H * 0.82, E.w[1] * 0.55);
+    baseY += (1 - sinkK(E)) * H * 0.35;
+    var amp = (H * 0.045 + i * H * 0.013) * (0.22 + E.swell * 1.6) * flat * sinkK(E);
+    ctx.beginPath(); ctx.moveTo(-4, H + 4);
+    for (x = 0; x <= W; x += 6) {
+      xn = x / W * 2 - 1;
+      var prof = 0.8 * bumpsP(xn, E) + 0.45 * vn(xn * 3.1 + i * 7.3 + E.bumpT * 0.14);
+      ctx.lineTo(x, baseY - amp * prof);
+    }
+    ctx.lineTo(W + 4, H + 4); ctx.closePath();
+    ctx.fillStyle = "rgb(15,16,19)"; ctx.fill();
+    ctx.beginPath();
+    for (x = 0; x <= W; x += 6) {
+      xn = x / W * 2 - 1;
+      var prof2 = 0.8 * bumpsP(xn, E) + 0.45 * vn(xn * 3.1 + i * 7.3 + E.bumpT * 0.14);
+      var y = baseY - amp * prof2;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    var a = 0.22 + 0.5 * (i / (N - 1)) + E.w[2] * 0.3;
+    ctx.strokeStyle = "rgba(255,255,255," + clamp(a * sinkK(E), 0, 0.95).toFixed(3) + ")";
+    ctx.lineWidth = 1.1; ctx.stroke();
+  }
+  if (E.w[2] > 0.05) {
+    ctx.beginPath(); ctx.moveTo(0, H * 0.6); ctx.lineTo(W, H * 0.6);
+    ctx.strokeStyle = "rgba(255,255,255," + (E.w[2] * (1 - ease(E.ph / 0.55)) * 0.8).toFixed(3) + ")";
+    ctx.lineWidth = 2; ctx.stroke();
+  }
+}
+
+/* ---- 09 Ink Bloom ---- */
+function update09(E, S) {
+  if (!S.blooms) { S.blooms = []; S.cool = 0; }
+  if (E.dt <= 0) return;
+  S.cool -= E.dt;
+  if (E.state === "listening" && E.onset > 0.4 && S.cool <= 0 && S.blooms.length < 26) {
+    S.seed = (S.seed || 0) + 1;
+    var cx = (h1(S.seed * 1.7) + h1(S.seed * 2.9)) / 2;
+    S.blooms.push({ x: cx, y: 0.03, r: 0.06, vr: 0.16 + E.onset * 0.12,
+                    vy: 0.035, life: 0, max: 2.4, seed: S.seed * 3.3, big: false });
+    S.cool = 0.13;
+  }
+  if (E.state === "pasted" && S.last !== "pasted") {
+    S.blooms.push({ x: 0.5, y: 0.05, r: 0.08, vr: 0.85, vy: 0.05, life: 0, max: 1.1, seed: 9.1, big: true });
+  }
+  var grow = 1 - E.w[1] * 0.96, sink = E.w[3], i, b;
+  for (i = S.blooms.length - 1; i >= 0; i--) {
+    b = S.blooms[i];
+    b.life += E.dt * (sink > 0.4 ? 3 : 1);
+    b.r += b.vr * grow * E.dt;
+    b.y += (b.vy * grow - sink * 0.3) * E.dt;
+    if (b.life > b.max) S.blooms.splice(i, 1);
+  }
+  S.last = E.state;
+}
+function draw09(ctx, W, H, E, S) {
+  var g = ctx.createLinearGradient(0, H, 0, H * 0.72);
+  g.addColorStop(0, "rgba(255,255,255," + (0.1 + 0.16 * E.lvl).toFixed(3) + ")");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, H * 0.72, W, H * 0.28);
+  var blooms = S.blooms || [], i, k;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (i = 0; i < blooms.length; i++) {
+    var b = blooms[i], fr = b.life / b.max;
+    var a = Math.sin(Math.PI * clamp(fr, 0, 1)) * (b.big ? 0.5 : 0.34) * (1 - E.w[1] * 0.4);
+    var cx = b.x * W, cy = H - b.y * H, r = b.r * H * (b.big ? 2.1 : 1);
+    var pass;
+    for (pass = 0; pass < 2; pass++) {
+      var rr = pass === 0 ? r : r * 0.58;
+      ctx.beginPath();
+      for (k = 0; k <= 16; k++) {
+        var th = k / 16 * TAU;
+        var rad = rr * (1 + 0.2 * (vn(th * 2.1 + b.seed + E.t * 0.55) - 0.5));
+        var x = cx + Math.cos(th) * rad * 1.45, y = cy + Math.sin(th) * rad * 0.8;
+        if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "rgba(235,235,235," + (a * (pass === 0 ? 0.4 : 0.75)).toFixed(3) + ")";
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+/* ---- 10 Reed Bed ---- */
+function draw10(ctx, W, H, E, S) {
+  var N = 84, i, xn;
+  var sink = sinkK(E);
+  var droop = E.w[3] * ease(E.ph / 0.3);
+  var straight = 1 - E.w[2] * 0.95;
+  var centerTip = null;
+  for (i = 0; i < N; i++) {
+    xn = i / (N - 1) * 2 - 1;
+    var bx = (i + 0.5) / N * W;
+    bx = lerp(bx, W / 2 + (bx - W / 2) * 0.22, E.w[1] * 0.85);
+    var cw = Math.exp(-xn * xn * 1.7);
+    var hgt = H * (0.15 + 0.52 * E.swell * (0.3 + bumpsP(xn, E))) * (0.72 + 0.28 * h1(i * 3.3));
+    hgt = lerp(hgt, H * 0.3, E.w[1] * 0.6) * (0.35 + 0.65 * sink);
+    var sway = Math.sin(E.bumpT * (0.9 + h1(i * 1.3) * 0.7) + i * 0.55)
+             * (2.5 + E.lvl * 15) * cw * straight * (1 - E.w[1] * 0.9) * (1 + droop * 0.8);
+    var tipX = bx + sway, tipY = H - hgt + droop * H * 0.14;
+    ctx.beginPath();
+    ctx.moveTo(bx, H);
+    ctx.quadraticCurveTo(bx + sway * 0.3, H - hgt * 0.62, tipX, tipY);
+    var a = (0.18 + 0.62 * cw) * (0.4 + 0.6 * sink) + E.w[2] * 0.25;
+    ctx.strokeStyle = "rgba(255,255,255," + clamp(a, 0, 0.95).toFixed(3) + ")";
+    ctx.lineWidth = 1.1; ctx.stroke();
+    if (cw > 0.55) {
+      ctx.beginPath(); ctx.arc(tipX, tipY, 1.3, 0, TAU);
+      ctx.fillStyle = "rgba(255,255,255," + clamp(a, 0, 0.9).toFixed(3) + ")"; ctx.fill();
+    }
+    if (Math.abs(xn) < 0.03) centerTip = { x: tipX, y: tipY };
+  }
+  /* The page's only colour: optional butter tick, pasted only, toggleable. */
+  if (S.butter && centerTip && E.w[2] > 0.35) {
+    ctx.beginPath(); ctx.arc(centerTip.x, centerTip.y, 3, 0, TAU);
+    ctx.fillStyle = "rgba(255,201,77," + (E.w[2] * (1 - ease(E.ph / 0.8))).toFixed(3) + ")";
+    ctx.fill();
+  }
+}
+
+
+/* =====================================================================
+   Round-two renderers (drawN1..drawN10 / updateN*)
+   Coordinates: canvas CSS pixels, origin top-left, canvas = the 240 pt
+   band; the screen's bottom edge is y = H. Warm accent appears only via
+   the pasted weight E.w[2]; butter amber = rgb(255,201,77).
+   ===================================================================== */
+function accK(E) { return clamp(E.w[2], 0, 1); }
+function glow(E, v) {           /* intensity v -> [r,g,b], lerped to amber on paste */
+  var k = accK(E) * 0.9, r = v * 255, g = v * 255, b = v * 255;
+  if (k > 0.01) { r = lerp(r, 255, k); g = lerp(g, 201, k); b = lerp(b, 77, k); }
+  return [r | 0, g | 0, b | 0];
+}
+function rgba(E, v, a) { var c = glow(E, v); return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")"; }
+function showOf(E) { return clamp(E.w[0] + 0.75 * E.w[1] + E.w[2] + E.w[3] * sinkK(E) * 0.4, 0, 1); }
+
+/* ---- N1 Silk Ribbon: layered cloth ribbons rising from the edge ---- */
+function drawN1(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  var sk = sinkK(E);
+  var lift0 = (0.30 + 0.65 * E.swell + 0.10 * E.w[2]) * sk * show;
+  var det = (0.25 + 0.75 * E.lvl) * (0.35 + 0.65 * E.w[0] + 0.25 * E.w[1]);
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  for (var i = 0; i < 3; i++) {
+    var lift = H * (0.14 + 0.13 * i) * lift0 + H * 0.045;
+    var ph = E.shaftT * (0.8 + 0.3 * i) + i * 2.05;
+    var N = 64, pts = [], k, xn, px, win, hh, y, topY = H;
+    for (k = 0; k <= N; k++) {
+      xn = k / N * 2 - 1; px = k / N * W; win = 1 - xn * xn * 0.85;
+      hh = bumpsP(xn, E) * (0.7 + 0.3 * Math.sin(E.t * 0.37 + i * 1.9));
+      hh += (0.34 * Math.sin(xn * 6.5 - ph * 1.5) + 0.15 * Math.sin(xn * 14.0 + ph * 0.8 + i)) * det * win;
+      hh = Math.max(0.02, hh);
+      y = H - lift * hh * 1.15;
+      pts.push([px, y]); if (y < topY) topY = y;
+    }
+    /* soft body: vertical gradient, brighter at the edge */
+    var g = ctx.createLinearGradient(0, topY, 0, H);
+    var c = glow(E, 0.8);
+    g.addColorStop(0, "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0.015)");
+    g.addColorStop(1, "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + (0.10 + 0.10 * E.swell).toFixed(3) + ")");
+    ctx.beginPath(); ctx.moveTo(pts[0][0], H);
+    for (k = 0; k <= N; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+    ctx.lineTo(W, H); ctx.closePath();
+    ctx.fillStyle = g; ctx.fill();
+    /* bright crest line */
+    ctx.beginPath();
+    for (k = 0; k <= N; k++) { k ? ctx.lineTo(pts[k][0], pts[k][1]) : ctx.moveTo(pts[k][0], pts[k][1]); }
+    ctx.strokeStyle = rgba(E, 0.9, clamp(0.34 * show * (0.35 + 0.65 * E.swell + 0.3 * E.w[2]), 0, 0.85));
+    ctx.lineWidth = 1.1 + 0.7 * E.swell;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ---- N2 Signature: the dictation signs itself ---- */
+function updateN2(E, S) {
+  if (!S.pts) S.pts = [];
+  if (E.state === "listening" && E.ph < 0.18) { S.pts.length = 0; S.px = 0.04; S.py = 0.68; S.life = 0; }
+  var voiced = E.lvl > 0.03 || E.swell > 0.06;
+  S.life = voiced ? 2.4 : Math.max(0, (S.life || 0) - E.dt);
+  if (E.w[0] < 0.4) return;
+  if (S.px === undefined) { S.px = 0.04; S.py = 0.68; }
+  S.px += E.dt * 0.24;
+  var wander = vn(S.px * 23 + E.rt * 0.7) * 2 - 1;
+  var target = 0.70 - wander * 0.07 - E.lvl * 0.11 + E.swell * 0.03;
+  S.py += (clamp(target, 0.48, 0.86) - S.py) * (1 - Math.exp(-8 * E.dt));
+  S.pts.push([S.px, S.py, 0.35 + 0.65 * E.lvl]);
+  if (S.pts.length > 1100) S.pts.shift();
+}
+function drawN2(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  var pts = S.pts; if (!pts || pts.length < 2) return;
+  var fade = clamp((S.life || 0) / 0.9, 0, 1);
+  var a = 0.62 * show * fade;
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  /* wide faint under-body */
+  ctx.beginPath();
+  for (var i = 0; i < pts.length; i++) { var x = pts[i][0] * W, y = pts[i][1] * H; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.strokeStyle = rgba(E, 0.55, 0.10 * a); ctx.lineWidth = 6.5; ctx.stroke();
+  /* bright core stroke */
+  ctx.beginPath();
+  for (i = 0; i < pts.length; i++) { x = pts[i][0] * W; y = pts[i][1] * H; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.strokeStyle = rgba(E, 0.95, clamp(a, 0, 0.85));
+  ctx.lineWidth = 1.4;
+  ctx.shadowColor = rgba(E, 1, 0.4 * a); ctx.shadowBlur = 7 * show;
+  ctx.stroke(); ctx.shadowBlur = 0;
+  /* pen nib: bright head dot while drawing */
+  if (E.w[0] > 0.4 && pts.length) {
+    var p = pts[pts.length - 1];
+    ctx.beginPath(); ctx.arc(p[0] * W, p[1] * H, 2.2, 0, TAU);
+    ctx.fillStyle = rgba(E, 1, 0.8 * a); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---- N3 Aurora Veil: drifting light curtains ---- */
+function drawN3(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  var sk = sinkK(E);
+  var still = 1 - 0.55 * E.w[1];
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  var c = glow(E, 0.82);
+  for (var i = 0; i < 4; i++) {
+    var cx = W * (0.5 + 0.36 * Math.sin(E.t * (0.05 + 0.02 * i) * still * TAU * 0.5 + i * 2.4));
+    var cw = W * (0.09 + 0.05 * i);
+    var ch = H * (0.42 + 0.5 * E.swell) * sk * show * (0.75 + 0.25 * Math.sin(E.t * 0.21 + i * 1.7));
+    var N = 40, k, xn, px, dx, prof, top;
+    ctx.beginPath();
+    for (k = 0; k <= N; k++) {
+      xn = k / N * 2 - 1; px = (xn + 1) / 2 * W;
+      dx = (px - cx) / cw; prof = Math.exp(-dx * dx * 0.5);
+      top = H - ch * prof * (0.75 + 0.25 * Math.sin(xn * 5.0 + E.t * (0.3 + i * 0.11) * still + i * 2.0));
+      k ? ctx.lineTo(px, top) : ctx.moveTo(px, top);
+    }
+    for (k = N; k >= 0; k--) ctx.lineTo((k / N * 2 - 1 + 1) / 2 * W, H);
+    ctx.closePath();
+    var g = ctx.createLinearGradient(0, H - ch * 1.1, 0, H);
+    var al = (0.05 + 0.09 * E.swell) * (i === 0 ? 1 : 0.75);
+    g.addColorStop(0, "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + (al * 0.25).toFixed(3) + ")");
+    g.addColorStop(1, "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + al.toFixed(3) + ")");
+    ctx.fillStyle = g; ctx.fill();
+  }
+  /* warm sheen on paste */
+  if (E.w[2] > 0.02) {
+    var wg = ctx.createLinearGradient(0, H * 0.4, 0, H);
+    wg.addColorStop(0, "rgba(255,201,77,0)");
+    wg.addColorStop(1, "rgba(255,201,77," + (0.16 * E.w[2] * (1 - ease(E.ph / 0.9))).toFixed(3) + ")");
+    ctx.fillStyle = wg; ctx.fillRect(0, H * 0.4, W, H * 0.6);
+  }
+  ctx.restore();
+}
+
+/* ---- N4 Pilot Lamp: one breathing light ---- */
+function drawN4(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  var sk = sinkK(E), w1 = E.w[1];
+  var cx = W / 2, cy = H - H * 0.05;
+  var hb = 0;
+  if (w1 > 0.02) {
+    var ph2 = E.t * 2.4;
+    hb = (Math.pow(Math.max(0, Math.sin(ph2)), 10) + 0.55 * Math.pow(Math.max(0, Math.sin(ph2 - 1.1)), 10)) * w1;
+  }
+  var swell = E.swell * (0.35 + 0.65 * E.w[0]) + w1 * 0.12 + hb * 0.15;
+  var I = show * (0.16 + 0.6 * swell + 0.22 * E.lvl) * sk + E.w[2] * 0.5;
+  var R = H * (0.5 + 0.4 * swell + 0.15 * E.w[2]) * (0.7 + 0.3 * sk);
+  var c = glow(E, Math.min(1, I));
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+  g.addColorStop(0, "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + clamp(I * 0.9, 0, 0.85).toFixed(3) + ")");
+  g.addColorStop(0.35, "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + clamp(I * 0.35, 0, 0.5).toFixed(3) + ")");
+  g.addColorStop(1, "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  /* hot core */
+  var R2 = H * 0.10 * (0.6 + 0.8 * swell);
+  var g2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, R2);
+  var c2 = glow(E, 1);
+  g2.addColorStop(0, "rgba(" + c2[0] + "," + c2[1] + "," + c2[2] + "," + clamp(I * 1.2, 0, 0.9).toFixed(3) + ")");
+  g2.addColorStop(1, "rgba(" + c2[0] + "," + c2[1] + "," + c2[2] + ",0)");
+  ctx.fillStyle = g2; ctx.fillRect(cx - R2, cy - R2, R2 * 2, R2 * 2);
+  /* pasted ring */
+  if (E.w[2] > 0.01) {
+    var pr = ease(clamp(E.ph / 0.62, 0, 1));
+    var rr = H * (0.15 + pr * 0.85);
+    ctx.strokeStyle = "rgba(255,201,77," + clamp((1 - pr) * 0.8 * E.w[2], 0, 0.8).toFixed(3) + ")";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, rr, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ---- N5 Scope Trail: Lissajous figure drawn by the voice ---- */
+function updateN5(E, S) {
+  if (!S.tr) S.tr = [];
+  if (E.state === "listening" && E.ph < 0.18) S.tr.length = 0;
+  if (E.w[0] > 0.3) {
+    S.a1 = (S.a1 || 0) + E.dt * (1.2 + 2.8 * E.lvl);
+    S.a2 = (S.a2 || 0) + E.dt * (0.9 + 1.9 * E.swell);
+    S.tr.push([Math.sin(S.a1) + 0.35 * Math.sin(S.a1 * 2.03),
+               Math.sin(S.a2) + 0.3 * Math.sin(S.a2 * 1.7)]);
+    if (S.tr.length > 120) S.tr.shift();
+  }
+}
+function drawN5(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  var tr = S.tr || []; if (tr.length < 2) return;
+  var sk = sinkK(E);
+  var cx = W / 2, cy = H * 0.52;
+  var rx = H * (0.34 + 0.30 * E.swell) * sk, ry = H * (0.24 + 0.24 * E.lvl) * sk;
+  var n = tr.length, i;
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (i = 1; i < n; i++) {
+    var f = i / n;
+    var a = clamp(f * 1.2, 0, 1) * (0.15 + 0.7 * show) * (1 - 0.4 * E.w[1]) * sk;
+    if (a < 0.01) continue;
+    ctx.strokeStyle = rgba(E, 0.9, a * 0.75);
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(cx + tr[i - 1][0] * rx, cy + tr[i - 1][1] * ry);
+    ctx.lineTo(cx + tr[i][0] * rx, cy + tr[i][1] * ry);
+    ctx.stroke();
+  }
+  /* head glow */
+  var hp = tr[n - 1];
+  var hg = ctx.createRadialGradient(cx + hp[0] * rx, cy + hp[1] * ry, 0, cx + hp[0] * rx, cy + hp[1] * ry, H * 0.09);
+  var hc = glow(E, 1);
+  hg.addColorStop(0, "rgba(" + hc[0] + "," + hc[1] + "," + hc[2] + "," + (0.5 * show * sk).toFixed(3) + ")");
+  hg.addColorStop(1, "rgba(" + hc[0] + "," + hc[1] + "," + hc[2] + ",0)");
+  ctx.fillStyle = hg;
+  ctx.fillRect(cx + hp[0] * rx - H * 0.09, cy + hp[1] * ry - H * 0.09, H * 0.18, H * 0.18);
+  ctx.restore();
+}
+
+/* ---- N6 VU Arc: precision gauge ---- */
+function drawN6(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  if (S.vu === undefined) S.vu = 0;
+  var tgt = E.state === "listening" ? E.lvl : (E.state === "transcribing" ? 0.12 : E.lvl * 0.3);
+  S.vu += (tgt - S.vu) * (1 - Math.exp(-18 * E.dt));
+  var sk = sinkK(E);
+  var cx = W / 2, cy = H * 1.25, R = H * 0.85;
+  var a0 = 0.42, a1 = Math.PI - 0.42;
+  function pt(a, r) { return [cx + (r || R) * Math.cos(a), cy - (r || R) * Math.sin(a)]; }
+  var needle = lerp(a0, a1, clamp(S.vu, 0, 1));
+  var dim = 1 - 0.4 * E.w[1];
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+  /* track arc */
+  ctx.strokeStyle = rgba(E, 0.7, 0.13 * show * sk * dim); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, R, a0, a1); ctx.stroke();
+  /* active arc */
+  ctx.strokeStyle = rgba(E, 0.95, clamp(0.12 + 0.6 * S.vu, 0, 0.8) * show * sk * dim);
+  ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.arc(cx, cy, R, a0, needle); ctx.stroke();
+  /* ticks */
+  ctx.strokeStyle = rgba(E, 0.8, 0.22 * show * sk * dim); ctx.lineWidth = 1;
+  for (var i = 0; i <= 8; i++) {
+    var a = lerp(a0, a1, i / 8), p1 = pt(a, R - 4), p2 = pt(a, R + 3);
+    ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+  }
+  /* needle: short radial pointer + tip */
+  var np = pt(needle), np2 = pt(needle, R - H * 0.07);
+  ctx.strokeStyle = rgba(E, 1, clamp(0.35 + 0.55 * S.vu, 0, 0.9) * show * sk * dim);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(np2[0], np2[1]); ctx.lineTo(np[0], np[1]); ctx.stroke();
+  ctx.beginPath(); ctx.arc(np[0], np[1], 2.0, 0, TAU);
+  ctx.fillStyle = rgba(E, 1, 0.85 * show * sk * dim); ctx.fill();
+  /* pasted: amber sweep */
+  if (E.w[2] > 0.02) {
+    var fade = 1 - ease(clamp(E.ph / 0.8, 0, 1));
+    ctx.strokeStyle = "rgba(255,201,77," + clamp(0.6 * E.w[2] * fade, 0, 0.7).toFixed(3) + ")";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(cx, cy, R, a0, a1); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ---- N7 Frequency Comb: harp of vibrating teeth ---- */
+function drawN7(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  var sk = sinkK(E);
+  var env = (0.30 + 0.70 * E.swell) * (0.4 + 0.6 * E.w[0] + 0.2 * E.w[1]);
+  var N = 56;
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+  for (var i = 0; i < N; i++) {
+    var f = 0.25 + i * 0.055;
+    var v = Math.pow(clamp(vn(i * 7.31 + E.shaftT * f * 0.30 + E.bumpT * 0.13), 0, 1), 1.5);
+    var h = H * (0.02 + 0.55 * v * env) * sk * show;
+    var x = (i + 0.5) / N * W;
+    var a = (0.05 + 0.6 * v) * show * sk;
+    if (a < 0.01) continue;
+    ctx.strokeStyle = rgba(E, 0.9, a);
+    ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x, H - h); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ---- N8 Sonar Rings: onset pings from the edge ---- */
+function updateN8(E, S) {
+  if (!S.rings) S.rings = [];
+  if (E.onset > 0.45 && E.w[0] > 0.4 && S.rings.length < 7)
+    S.rings.push({ x: 0.5 + (vn(E.rt * 2.7) - 0.5) * 0.4, r: 0.04, a: 0.9 });
+  for (var i = S.rings.length - 1; i >= 0; i--) {
+    var g = S.rings[i];
+    g.r += E.dt * 0.55; g.a *= Math.exp(-E.dt * 1.6);
+    if (g.a < 0.02 || g.r > 1.3) S.rings.splice(i, 1);
+  }
+}
+function drawN8(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  var sk = sinkK(E), rings = S.rings || [], i, g;
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineWidth = 1.2;
+  for (i = 0; i < rings.length; i++) {
+    g = rings[i];
+    var a = g.a * 0.5 * show * sk;
+    if (a < 0.01) continue;
+    ctx.strokeStyle = rgba(E, 0.9, a);
+    ctx.beginPath(); ctx.arc(g.x * W, H + 6, g.r * H, 0, TAU); ctx.stroke();
+  }
+  /* pasted: one big warm ring from centre */
+  if (E.w[2] > 0.02) {
+    var pr = ease(clamp(E.ph / 0.62, 0, 1));
+    ctx.strokeStyle = "rgba(255,201,77," + clamp((1 - pr) * 0.7 * E.w[2], 0, 0.7).toFixed(3) + ")";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(W / 2, H + 6, H * (0.1 + pr * 0.95), 0, TAU); ctx.stroke();
+  }
+  /* faint origin shimmer under active rings */
+  if (rings.length) {
+    ctx.fillStyle = rgba(E, 0.9, 0.10 * show * sk);
+    for (i = 0; i < rings.length; i++) {
+      g = rings[i];
+      ctx.beginPath(); ctx.arc(g.x * W, H - 3, 2.5, 0, TAU); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+/* ---- N9 Voiceprint: the phrase as a living waveform ---- */
+function updateN9(E, S) {
+  if (!S.hist) S.hist = [];
+  if (E.state === "listening" && E.ph < 0.18) S.hist.length = 0;
+  var v = E.w[0] > 0.3 ? E.lvl : E.lvl * 0.2;
+  S.hist.push(v); if (S.hist.length > 150) S.hist.shift();
+}
+function drawN9(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  var h = S.hist || []; if (h.length < 2) return;
+  var sk = sinkK(E), n = h.length, i, x, y;
+  var base = H * 0.60, maxA = H * 0.34;
+  var c = glow(E, 0.95);
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  /* filled mirrored lens */
+  var g = ctx.createLinearGradient(0, base - maxA, 0, base + maxA);
+  g.addColorStop(0, "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0.05)");
+  g.addColorStop(0.5, "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + (0.20 * show * sk).toFixed(3) + ")");
+  g.addColorStop(1, "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0.05)");
+  ctx.beginPath();
+  for (i = 0; i < n; i++) { x = i / (n - 1) * W; y = base - h[i] * maxA * sk; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  for (i = n - 1; i >= 0; i--) { x = i / (n - 1) * W; y = base + h[i] * maxA * sk; ctx.lineTo(x, y); }
+  ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+  /* edge strokes: the two rails of the print */
+  ctx.lineWidth = 1.1; ctx.lineCap = "round";
+  ctx.strokeStyle = rgba(E, 0.95, clamp(0.55 * show * sk * (0.4 + 0.6 * E.swell), 0, 0.8));
+  ctx.beginPath();
+  for (i = 0; i < n; i++) { x = i / (n - 1) * W; y = base - h[i] * maxA * sk; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
+  ctx.beginPath();
+  for (i = 0; i < n; i++) { x = i / (n - 1) * W; y = base + h[i] * maxA * sk; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ---- N10 Mist Fields: slow light through fog ---- */
+function drawN10(ctx, W, H, E, S) {
+  var show = showOf(E); if (show < 0.02) return;
+  var sk = sinkK(E);
+  var drift = 0.4 + 0.6 * E.w[0] + 0.35 * E.w[1];
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  var c = glow(E, 0.8);
+  for (var i = 0; i < 3; i++) {
+    var px = W * (0.5 + 0.40 * Math.sin(E.t * (0.05 + 0.018 * i) * drift + i * 2.1));
+    var py = H * (0.55 + 0.30 * Math.sin(E.t * 0.07 * drift + i * 1.3 + 1.0));
+    var R = H * (0.9 + 0.4 * Math.sin(E.t * 0.05 * drift + i * 2.7));
+    var I = (0.05 + 0.11 * E.swell + 0.05 * E.lvl) * show * sk * (i === 0 ? 1 : 0.7);
+    if (I < 0.005) continue;
+    var g = ctx.createRadialGradient(px, py, 0, px, py, R);
+    g.addColorStop(0, "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + clamp(I, 0, 0.4).toFixed(3) + ")");
+    g.addColorStop(1, "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+  /* warm wash on paste */
+  if (E.w[2] > 0.02) {
+    var wg = ctx.createRadialGradient(W / 2, H * 0.8, 0, W / 2, H * 0.8, H * 1.1);
+    wg.addColorStop(0, "rgba(255,201,77," + clamp(0.14 * E.w[2] * (1 - ease(E.ph / 0.9)), 0, 0.2).toFixed(3) + ")");
+    wg.addColorStop(1, "rgba(255,201,77,0)");
+    ctx.fillStyle = wg; ctx.fillRect(0, 0, W, H);
+  }
+  ctx.restore();
+}
+
+/* =====================================================================
+   Page construction
+   ===================================================================== */
+function dotsHTML(n) {
+  var s = "", i;
+  for (i = 1; i <= 5; i++) s += "<i class=\"" + (i <= n ? "on" : "") + "\"></i>";
+  return "<span class=\"dots\" aria-hidden=\"true\">" + s + "</span><span class=\"v\">" + n + " / 5</span>";
+}
+function screenHTML(c) {
+  return "<div class=\"screen\" data-screen=\"" + c.id + "\" role=\"button\" tabindex=\"0\" "
+    + "aria-label=\"Expand preview: " + c.name + "\">"
+    + "<div class=\"wall\"></div>"
+    + "<div class=\"menubar\"><b>Finder</b><span>File</span><span>Edit</span><span>View</span>"
+    + "<span class=\"right\">Buddadawg &middot; " + c.id.slice(1) + "</span></div>"
+    + "<div class=\"doc\"><div class=\"bar\"><i></i><i></i><i></i><span>notes.md</span></div>"
+    + "<div class=\"lines\"></div><div class=\"caret\"></div></div>"
+    + "<div class=\"dock\"><i></i><i></i><i></i><i></i><i></i><i></i></div>"
+    + "<span class=\"tag\">240 pt &middot; full width &middot; click-through</span>"
+    + "<span class=\"statechip\" data-chip>Listening</span>"
+    + "<canvas class=\"ov\" data-canvas=\"" + c.id + "\" role=\"img\" aria-label=\"Live animated preview of " + c.name + "\"></canvas>"
+    + "<span class=\"expandhint\">Click to expand</span></div>";
+}
+var host = document.getElementById("concepts");
+var toc = document.getElementById("toc");
+CONCEPTS.forEach(function (c, idx) {
+  c.S = {}; c.visible = false;
+  if (c.butter) c.S.butter = true;
+  var a = document.createElement("a");
+  a.href = "#" + c.id; a.textContent = c.id.slice(1) + " " + c.name;
+  toc.appendChild(a);
+  var sec = document.createElement("section");
+  sec.className = "concept" + (idx % 2 === 1 ? " flip" : "");
+  sec.id = c.id;
+  sec.setAttribute("aria-labelledby", c.id + "-h");
+  var badge = c.badge ? "<span class=\"badge " + c.badge[1] + "\">" + c.badge[0] + "</span>" : "";
+  var butterRow = c.butter ?
+    "<label class=\"optrow\"><input type=\"checkbox\" id=\"butter-toggle\" checked>"
+    + "<span><b>Optional butter tick</b> (#FFC94D, one 3 px dot, Pasted only). "
+    + "Shown so it can be judged; product default per the owner decision: <b>off / deleted</b>.</span></label>" : "";
+  var note = c.note ? "<p class=\"note\">" + c.note + "</p>" : "";
+  sec.innerHTML =
+    "<div class=\"head\"><span class=\"num\" aria-hidden=\"true\">" + c.id.slice(1) + "</span>"
+    + "<h2 id=\"" + c.id + "-h\">" + c.name + "</h2>" + badge + "</div>"
+    + "<p class=\"thesis\">" + c.thesis + "</p>"
+    + "<div class=\"body-grid\">"
+    + "<div class=\"screen-col\">" + screenHTML(c)
+    + "<div class=\"figcap\"><span>Simulated desktop &middot; overlay band = 240 pt panel</span>"
+    + "<button type=\"button\" class=\"expandbtn\" data-expand=\"" + c.id + "\">Expand</button></div></div>"
+    + "<div class=\"meta-col\">"
+    + "<h3>State treatment</h3><dl class=\"states\">"
+    + "<div class=\"r\"><dt>Listening</dt><dd>" + c.states.l + "</dd></div>"
+    + "<div class=\"r\"><dt>Transcribing</dt><dd>" + c.states.t + "</dd></div>"
+    + "<div class=\"r\"><dt>Pasted</dt><dd>" + c.states.p + "</dd></div>"
+    + "<div class=\"r\"><dt>Cancelled</dt><dd>" + c.states.c + "</dd></div></dl>"
+    + "<div class=\"specs\">"
+    + "<div class=\"spec\"><span class=\"k\">Implementation difficulty</span>" + dotsHTML(c.diff) + "</div>"
+    + "<div class=\"spec\"><span class=\"k\">Distraction risk</span><span class=\"risk " + c.risk + "\">" + c.risk + "</span></div>"
+    + "</div>"
+    + "<p class=\"uniq\">" + c.uniq + "</p>"
+    + "<div class=\"sketch\"><span class=\"k\">Metal implementation sketch</span><p>" + c.sketch + "</p></div>"
+    + butterRow + note
+    + "</div></div>";
+  host.appendChild(sec);
+  c.canvas = sec.querySelector("canvas[data-canvas]");
+  c.ctx = c.canvas.getContext("2d");
+  c.screenEl = sec.querySelector("[data-screen]");
+});
+var butterToggle = document.getElementById("butter-toggle");
+if (butterToggle) butterToggle.addEventListener("change", function () {
+  CONCEPTS[9].S.butter = butterToggle.checked;
+});
+
+/* Only render previews near the viewport. */
+if ("IntersectionObserver" in window) {
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      var c = CONCEPTS[parseInt(en.target.getAttribute("data-screen").slice(1), 10) - 1];
+      c.visible = en.isIntersecting;
+    });
+  }, { rootMargin: "240px" });
+  CONCEPTS.forEach(function (c) { io.observe(c.screenEl); });
+} else {
+  CONCEPTS.forEach(function (c) { c.visible = true; });
+}
+
+/* =====================================================================
+   Shared voice + state simulation (rates from Overlay.swift)
+   ===================================================================== */
+var SIM = {
+  state: "listening", since: 10, w: [1, 0, 0, 0],
+  lvl: 0, swell: 0, raw: 0, onset: 0,
+  t: 0, shaftT: 0, bumpT: 0, rt: 0,
+  gate: 0, gateTarget: 1, gateTimer: 2.6, prevSyll: 0,
+  paused: false, demo: false, demoStep: 0, demoTimer: 0,
+  reduceManual: false
+};
+var IDX = { listening: 0, transcribing: 1, pasted: 2, cancelled: 3 };
+var LABEL = { listening: "Listening", transcribing: "Transcribing", pasted: "Pasted", cancelled: "Cancelled" };
+var mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+function reducedNow() { return mq.matches || SIM.reduceManual; }
+
+function setState(next, fromDemo) {
+  if (SIM.state !== next) SIM.since = 0;
+  SIM.state = next;
+  if (!fromDemo && SIM.demo) { SIM.demo = false; syncDemoBtn(); }
+  var btns = document.querySelectorAll(".seg button[data-state]");
+  btns.forEach(function (b) {
+    b.setAttribute("aria-pressed", b.getAttribute("data-state") === next ? "true" : "false");
+  });
+  document.querySelectorAll("[data-chip]").forEach(function (ch) { ch.textContent = LABEL[next]; });
+}
+var demoBtn = document.getElementById("btn-demo");
+function syncDemoBtn() { demoBtn.setAttribute("aria-pressed", SIM.demo ? "true" : "false"); }
+demoBtn.addEventListener("click", function () {
+  SIM.demo = !SIM.demo; SIM.demoStep = 0; SIM.demoTimer = 0;
+  if (SIM.demo) setState("listening", true);
+  syncDemoBtn();
+});
+document.querySelectorAll(".seg button[data-state]").forEach(function (b) {
+  b.addEventListener("click", function () { setState(b.getAttribute("data-state"), false); });
+});
+var pauseBtn = document.getElementById("btn-pause");
+function syncPauseBtn() {
+  pauseBtn.setAttribute("aria-pressed", SIM.paused ? "true" : "false");
+  pauseBtn.textContent = SIM.paused ? "Resume motion" : "Pause motion";
+}
+pauseBtn.addEventListener("click", function () { SIM.paused = !SIM.paused; syncPauseBtn(); });
+var reduceBtn = document.getElementById("btn-reduce");
+function syncReduceBtn() { reduceBtn.setAttribute("aria-pressed", SIM.reduceManual ? "true" : "false"); }
+reduceBtn.addEventListener("click", function () { SIM.reduceManual = !SIM.reduceManual; syncReduceBtn(); });
+
+document.addEventListener("keydown", function (ev) {
+  if (ev.target && (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA")) return;
+  if (ev.key === "1") setState("listening", false);
+  else if (ev.key === "2") setState("transcribing", false);
+  else if (ev.key === "3") setState("pasted", false);
+  else if (ev.key === "4") setState("cancelled", false);
+  else if (ev.key === " " && !focusOpen && ev.target === document.body) {
+    ev.preventDefault(); SIM.paused = !SIM.paused; syncPauseBtn();
+  }
+});
+
+var DEMO = [["listening", 4.2], ["transcribing", 1.9], ["pasted", 0], ["listening", 3.2], ["cancelled", 0]];
+function stepSim(dtReal) {
+  var E = { dt: 0, t: SIM.t, shaftT: SIM.shaftT, bumpT: SIM.bumpT, rt: SIM.rt,
+            lvl: SIM.lvl, swell: SIM.swell, raw: SIM.raw, onset: SIM.onset,
+            w: SIM.w, ph: SIM.since / 1.9, state: SIM.state, reduced: reducedNow() };
+  if (SIM.paused || dtReal <= 0) return E;
+  var dt = Math.min(dtReal, 0.05);
+  E.dt = dt;
+  SIM.rt += dt; SIM.since += dt; E.rt = SIM.rt;
+
+  /* Demo cycle (mirrors runDemo): listen, transcribe, paste, listen, cancel. */
+  if (SIM.demo) {
+    SIM.demoTimer += dt;
+    var cur = DEMO[SIM.demoStep % DEMO.length];
+    if (SIM.state !== cur[0]) setState(cur[0], true);
+    if (cur[1] > 0 && SIM.demoTimer > cur[1]) { SIM.demoStep++; SIM.demoTimer = 0; }
+  }
+  /* Brief states end themselves (slowed vs product 0.62 s / 0.20 s). */
+  if (SIM.state === "pasted" && SIM.since > 1.35) {
+    setState("listening", SIM.demo);
+    if (SIM.demo) { SIM.demoStep++; SIM.demoTimer = 0; }
+  }
+  if (SIM.state === "cancelled" && SIM.since > 1.0) {
+    setState("listening", SIM.demo);
+    if (SIM.demo) { SIM.demoStep++; SIM.demoTimer = 0; }
+  }
+  E.state = SIM.state; E.ph = SIM.since / 1.9;
+
+  /* Phrase envelope: speak 2-4 s, pause 0.6-1.4 s. */
+  SIM.gateTimer -= dt;
+  if (SIM.gateTimer <= 0) {
+    SIM.gateTarget = SIM.gateTarget > 0.5 ? 0 : 1;
+    SIM.gateTimer = SIM.gateTarget > 0.5 ? 2 + vn(SIM.rt * 0.37) * 2 : 0.6 + vn(SIM.rt * 0.53 + 9) * 0.8;
+  }
+  SIM.gate += (SIM.gateTarget - SIM.gate) * (1 - Math.exp(-7 * dt));
+
+  /* Syllabic bursts (~4-7 Hz) under a slower prosody swell. */
+  var syll = Math.max(0, Math.sin(SIM.rt * TAU * 4.3) * 0.62
+                       + Math.sin(SIM.rt * TAU * 7.05 + 1.3) * 0.38
+                       + (vn(SIM.rt * 9.1) - 0.5) * 0.55);
+  syll = clamp(syll, 0, 1.2);
+  var prosody = 0.55 + 0.45 * Math.sin(SIM.rt * TAU * 0.31 + 0.8) * Math.sin(SIM.rt * TAU * 0.113);
+  SIM.raw = clamp(SIM.gate * (0.12 + 0.88 * syll) * prosody * 1.25, 0, 1);
+  if (SIM.prevSyll <= 0.55 && syll > 0.55 && SIM.gate > 0.5) SIM.onset = clamp(0.5 + syll * 0.6, 0, 1);
+  SIM.prevSyll = syll;
+  SIM.onset *= Math.exp(-dt * 9);
+
+  /* App smoothing: level rise 20/s fall 6/s; swell rise 7/s fall 3.5/s. */
+  var target = SIM.state === "listening" ? SIM.raw : 0;
+  SIM.lvl += (target - SIM.lvl) * (1 - Math.exp(-(target > SIM.lvl ? 20 : 6) * dt));
+  SIM.swell += (SIM.lvl - SIM.swell) * (1 - Math.exp(-(SIM.lvl > SIM.swell ? 7 : 3.5) * dt));
+
+  /* PhaseClock integration, damped to 15% under Reduced Motion. */
+  var pdt = dt * (E.reduced ? 0.15 : 1);
+  SIM.t += pdt;
+  SIM.shaftT += pdt * (1 + 1.5 * SIM.lvl);
+  SIM.bumpT += pdt * (0.7 + 0.8 * SIM.swell);
+
+  /* State weights crossfade at 26/s (CPU blend in the app). */
+  var k = 1 - Math.exp(-26 * dt), i;
+  for (i = 0; i < 4; i++) SIM.w[i] += ((i === IDX[SIM.state] ? 1 : 0) - SIM.w[i]) * k;
+
+  E.t = SIM.t; E.shaftT = SIM.shaftT; E.bumpT = SIM.bumpT;
+  E.lvl = SIM.lvl; E.swell = SIM.swell; E.raw = SIM.raw; E.onset = SIM.onset;
+  return E;
+}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+var SCALE = 0.85;
+function renderInto(ctx, canvas, c, E) {
+  var r = canvas.getBoundingClientRect();
+  var w = Math.max(2, Math.round(r.width * SCALE));
+  var h = Math.max(2, Math.round(r.height * SCALE));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  ctx.clearRect(0, 0, r.width, r.height);
+  c.draw(ctx, r.width, r.height, E, c.S);
+}
+var meterFill = document.getElementById("meter-fill");
+var meterVal = document.getElementById("meter-val");
+var lastTs = null;
+function frame(ts) {
+  var dt = lastTs === null ? 0 : (ts - lastTs) / 1000;
+  lastTs = ts;
+  var E = stepSim(dt);
+  var i, c;
+  for (i = 0; i < CONCEPTS.length; i++) {
+    c = CONCEPTS[i];
+    if (c.update) c.update(E, c.S);
+  }
+  for (i = 0; i < CONCEPTS.length; i++) {
+    c = CONCEPTS[i];
+    if (c.visible) renderInto(c.ctx, c.canvas, c, E);
+  }
+  if (focusOpen && focusConcept) renderInto(focusCtx, focusCanvas, focusConcept, E);
+  meterFill.style.width = (SIM.lvl * 100).toFixed(1) + "%";
+  meterVal.textContent = "level " + SIM.lvl.toFixed(2);
+  requestAnimationFrame(frame);
+}
+
+/* =====================================================================
+   Focus view
+   ===================================================================== */
+var focusEl = document.getElementById("focus");
+var focusCanvas = document.getElementById("focus-canvas");
+var focusCtx = focusCanvas.getContext("2d");
+var focusTitle = document.getElementById("focus-title");
+var focusThesis = document.getElementById("focus-thesis");
+var focusOpen = false, focusConcept = null, lastOpener = null;
+function openFocus(c, opener) {
+  focusConcept = c; focusOpen = true; lastOpener = opener || null;
+  focusTitle.textContent = c.id.slice(1) + " \u00b7 " + c.name;
+  focusThesis.textContent = c.thesis + "  Difficulty " + c.diff + "/5 \u00b7 distraction " + c.risk + ".";
+  focusEl.hidden = false;
+  focusEl.classList.add("open");
+  document.body.classList.add("locked");
+  document.getElementById("focus-close").focus();
+}
+function closeFocus() {
+  focusOpen = false; focusConcept = null;
+  focusEl.classList.remove("open");
+  focusEl.hidden = true;
+  document.body.classList.remove("locked");
+  if (lastOpener) lastOpener.focus();
+}
+document.getElementById("focus-close").addEventListener("click", closeFocus);
+focusEl.addEventListener("click", function (ev) { if (ev.target === focusEl) closeFocus(); });
+document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && focusOpen) closeFocus(); });
+CONCEPTS.forEach(function (c) {
+  c.screenEl.addEventListener("click", function () { openFocus(c, c.screenEl); });
+  c.screenEl.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openFocus(c, c.screenEl); }
+  });
+});
+document.querySelectorAll("[data-expand]").forEach(function (b) {
+  b.addEventListener("click", function () {
+    var c = CONCEPTS[parseInt(b.getAttribute("data-expand").slice(1), 10) - 1];
+    openFocus(c, b);
+  });
+});
+
+syncPauseBtn(); syncReduceBtn(); syncDemoBtn();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
+
+
+

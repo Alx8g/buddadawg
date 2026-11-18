@@ -1,3 +1,4 @@
+import Accelerate
 import CoreML
 import Foundation
 
@@ -69,8 +70,22 @@ public final class Transcriber {
         let f = try MLMultiArray(shape: [1, NSNumber(value: T), 128], dataType: .float16)
         let m = try MLMultiArray(shape: [1, NSNumber(value: T)], dataType: .int32)
         let fp = f.dataPointer.assumingMemoryBound(to: Float16.self), mp = m.dataPointer.assumingMemoryBound(to: Int32.self)
-        for i in 0..<(T * 128) { fp[i] = i < min(frames, T) * 128 ? Float16(feats[i]) : 0 }
-        for i in 0..<T { mp[i] = i < valid ? 1 : 0 }
+        // Bulk Float -> Float16 (vImage rounds to nearest even, identical to scalar Float16());
+        // the freshly allocated MLMultiArray is contiguous, as the old linear fill assumed.
+        let filled = min(frames, T) * 128
+        if filled > 0 {
+            feats.withUnsafeBufferPointer { src in
+                var sbuf = vImage_Buffer(data: UnsafeMutableRawPointer(mutating: src.baseAddress!),
+                                          height: 1, width: vImagePixelCount(filled), rowBytes: filled * 4)
+                var dbuf = vImage_Buffer(data: UnsafeMutableRawPointer(fp),
+                                          height: 1, width: vImagePixelCount(filled), rowBytes: filled * 2)
+                _ = vImageConvert_PlanarFtoPlanar16F(&sbuf, &dbuf, vImage_Flags(kvImageNoFlags))
+            }
+        }
+        if filled < T * 128 { (fp + filled).update(repeating: 0, count: T * 128 - filled) }
+        let ones = Swift.max(0, Swift.min(valid, T))
+        mp.update(repeating: 1, count: ones)
+        if ones < T { (mp + ones).update(repeating: 0, count: T - ones) }
 
         let input = try MLDictionaryFeatureProvider(dictionary: ["features": f, "mask": m])
         let out = try available[w]!.prediction(from: input).featureValue(for: "encoded")!.multiArrayValue!
@@ -80,10 +95,28 @@ public final class Transcriber {
         out.withUnsafeBytes { raw in
             if out.dataType == .float16 {
                 let p = raw.bindMemory(to: Float16.self)
-                for t in 0..<n { for j in 0..<H { enc[t * H + j] = Float(p[t * s1 + j * s2]) } }
+                if s2 == 1 {  // contiguous rows: one bulk conversion per frame
+                    enc.withUnsafeMutableBufferPointer { dst in
+                        for t in 0..<n {
+                            var sbuf = vImage_Buffer(data: UnsafeMutableRawPointer(mutating: p.baseAddress! + t * s1),
+                                                      height: 1, width: vImagePixelCount(H), rowBytes: H * 2)
+                            var dbuf = vImage_Buffer(data: UnsafeMutableRawPointer(dst.baseAddress! + t * H),
+                                                      height: 1, width: vImagePixelCount(H), rowBytes: H * 4)
+                            _ = vImageConvert_Planar16FtoPlanarF(&sbuf, &dbuf, vImage_Flags(kvImageNoFlags))
+                        }
+                    }
+                } else {
+                    for t in 0..<n { for j in 0..<H { enc[t * H + j] = Float(p[t * s1 + j * s2]) } }
+                }
             } else {
                 let p = raw.bindMemory(to: Float.self)
-                for t in 0..<n { for j in 0..<H { enc[t * H + j] = p[t * s1 + j * s2] } }
+                if s2 == 1 {
+                    enc.withUnsafeMutableBufferPointer { dst in
+                        for t in 0..<n { (dst.baseAddress! + t * H).update(from: p.baseAddress! + t * s1, count: H) }
+                    }
+                } else {
+                    for t in 0..<n { for j in 0..<H { enc[t * H + j] = p[t * s1 + j * s2] } }
+                }
             }
         }
         guard enc.allSatisfy(\.isFinite) else { throw NSError(domain: "Bark", code: 1, userInfo: [NSLocalizedDescriptionKey: "non-finite encoder output"]) }
@@ -98,15 +131,16 @@ public final class Transcriber {
 
     /// Audio longer than the largest loaded window (15 s once everything is loaded) is cut in the middle of the quietest
     /// 200 ms within each stretch of a third to a full window, so no word is split.
-    func segments(_ x: [Float]) -> [[Float]] {
-        let longest = windows.max() ?? 15
+    func segments(_ x: [Float]) -> [[Float]] { Self.segments(x, longestWindow: windows.max() ?? 15) }
+
+    public static func segments(_ x: [Float], longestWindow longest: Int) -> [[Float]] {
         let maxLen = Int((Double(longest) - 0.25) * Double(Frontend.sampleRate)), minLen = longest * Frontend.sampleRate / 3
         if x.count <= maxLen { return [x] }
         let fr = Frontend.sampleRate / 100
         var e = (0..<(x.count / fr)).map { i in x[(i * fr)..<(i * fr + fr)].reduce(0) { $0 + $1 * $1 } / Float(fr) }
-        e = e.indices.map { i in  // 200 ms moving average
+        e = e.indices.map { i in  // 200 ms moving average (divide by the actual count at the edges)
             let lo = max(0, i - 10), hi = min(e.count, i + 10)
-            return e[lo..<hi].reduce(0, +) / 20
+            return e[lo..<hi].reduce(0, +) / Float(hi - lo)
         }
         var out: [[Float]] = [], start = 0
         while x.count - start > maxLen {

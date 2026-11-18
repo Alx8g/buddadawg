@@ -12,6 +12,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Models"
 cp .build/release/Buddadawg "$APP/Contents/MacOS/Buddadawg"
 cp -R Models/BarkEncoderANE.mlpackage Models/decoder.bin Models/decoder.json Models/vocab.json "$APP/Contents/Resources/Models/"
+cp -R ModelsClean "$APP/Contents/Resources/"
 cp NOTICE "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -21,11 +22,11 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleName</key><string>Buddadawg</string>
   <key>CFBundleExecutable</key><string>Buddadawg</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>0.2.0</string>
+  <key>CFBundleVersion</key><string>2</string>
   <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>LSUIElement</key><true/>
-  <key>NSMicrophoneUsageDescription</key><string>Buddadawg listens only while you hold fn, and transcribes on this Mac.</string>
+  <key>NSMicrophoneUsageDescription</key><string>Buddadawg listens only between fn taps, and transcribes on this Mac.</string>
 </dict></plist>
 PLIST
 

@@ -22,11 +22,19 @@ struct Weights {
     func float(_ name: String) -> [Float] {
         if let q = index[name + ".q"] {
             let codes = raw(name + ".q", Int8.self), scales = raw(name + ".s", Float16.self)
-            let cols = q.shape.dropFirst().reduce(1, *)
+            let rows = q.shape[0], cols = q.shape.dropFirst().reduce(1, *)
             var out = [Float](repeating: 0, count: codes.count)
-            for r in 0..<q.shape[0] {
-                let s = Float(scales[r])
-                for c in 0..<cols { out[r * cols + c] = Float(codes[r * cols + c]) * s }
+            // Int8 -> Float is exact and the per-row scale is one singly-rounded multiply,
+            // so the vectorised dequant matches the scalar loop bit for bit.
+            codes.withUnsafeBufferPointer { cp in
+                out.withUnsafeMutableBufferPointer { op in
+                    for r in 0..<rows {
+                        var s = Float(scales[r])
+                        let off = r * cols
+                        vDSP_vflt8(cp.baseAddress! + off, 1, op.baseAddress! + off, 1, vDSP_Length(cols))
+                        vDSP_vsmul(op.baseAddress! + off, 1, &s, op.baseAddress! + off, 1, vDSP_Length(cols))
+                    }
+                }
             }
             return out
         }
@@ -65,47 +73,83 @@ public final class Decoder {
         durations = v.durations; maxSymbols = v.max_symbols_per_step
     }
 
-    /// y = W x + b, W row-major [rows, cols].
-    private func gemv(_ W: [Float], _ x: [Float], _ b: [Float], rows: Int) -> [Float] {
-        var y = b
-        cblas_sgemv(CblasRowMajor, CblasNoTrans, Int32(rows), Int32(x.count), 1, W, Int32(x.count), x, 1, 1, &y, 1)
-        return y
+    /// Reusable buffers for one decode() call, so the per-frame / per-token loop allocates
+    /// nothing. Created per call and never stored on self: concurrent decode() calls on one
+    /// Decoder each get their own, exactly as the old per-step locals behaved.
+    private final class Scratch {
+        var g: [Float], x: [Float], dec: [Float], joint: [Float], logits: [Float]
+        var h: [[Float]], c: [[Float]]
+
+        init(logitCount: Int) {
+            let H = Decoder.hidden
+            g = [Float](repeating: 0, count: 4 * H)
+            x = [Float](repeating: 0, count: H)
+            dec = [Float](repeating: 0, count: H)
+            joint = [Float](repeating: 0, count: H)
+            logits = [Float](repeating: 0, count: logitCount)
+            h = [[Float](repeating: 0, count: H), [Float](repeating: 0, count: H)]
+            c = [[Float](repeating: 0, count: H), [Float](repeating: 0, count: H)]
+        }
     }
 
-    private func step(_ tok: Int, _ state: inout [(h: [Float], c: [Float])]) -> [Float] {
-        let H = Self.hidden
-        var x = Array(emb[(tok * H)..<(tok * H + H)])
-        for l in 0..<2 {
-            var g = gemv(lstm[l].wi, x, lstm[l].b, rows: 4 * H)
-            cblas_sgemv(CblasRowMajor, CblasNoTrans, Int32(4 * H), Int32(H), 1, lstm[l].wh, Int32(H), state[l].h, 1, 1, &g, 1)
-            var h = [Float](repeating: 0, count: H), c = state[l].c
-            for j in 0..<H {  // gates in torch order: input, forget, cell, output
-                let i = 1 / (1 + exp(-g[j])), f = 1 / (1 + exp(-g[H + j])), o = 1 / (1 + exp(-g[3 * H + j]))
-                c[j] = f * c[j] + i * tanh(g[2 * H + j])
-                h[j] = o * tanh(c[j])
-            }
-            state[l] = (h, c)
-            x = h
+    /// y = W x + b, W row-major [rows, cols], written into `y` (which must hold `rows` floats).
+    private func gemv(_ W: [Float], _ x: [Float], _ b: [Float], rows: Int, into y: inout [Float]) {
+        y.withUnsafeMutableBufferPointer { dst in
+            b.withUnsafeBufferPointer { src in dst.baseAddress!.update(from: src.baseAddress!, count: rows) }
         }
-        return gemv(projW, x, projB, rows: H)
+        cblas_sgemv(CblasRowMajor, CblasNoTrans, Int32(rows), Int32(x.count), 1, W, Int32(x.count), x, 1, 1, &y, 1)
+    }
+
+    /// One prediction-network step: advances the LSTM state in `s` and leaves the projected
+    /// output in `s.dec`. Gate arithmetic is unchanged (libm exp/tanh, same order per lane);
+    /// only bounds checks and per-step allocations are gone.
+    private func step(_ tok: Int, _ s: Scratch) {
+        let H = Self.hidden
+        s.x.withUnsafeMutableBufferPointer { dst in
+            emb.withUnsafeBufferPointer { src in dst.baseAddress!.update(from: src.baseAddress! + tok * H, count: H) }
+        }
+        var input = s.x
+        for l in 0..<2 {
+            gemv(lstm[l].wi, input, lstm[l].b, rows: 4 * H, into: &s.g)
+            cblas_sgemv(CblasRowMajor, CblasNoTrans, Int32(4 * H), Int32(H), 1, lstm[l].wh, Int32(H), s.h[l], 1, 1, &s.g, 1)
+            s.g.withUnsafeBufferPointer { g in
+                s.h[l].withUnsafeMutableBufferPointer { h in
+                    s.c[l].withUnsafeMutableBufferPointer { c in
+                        for j in 0..<H {  // gates in torch order: input, forget, cell, output
+                            let i = 1 / (1 + exp(-g[j])), f = 1 / (1 + exp(-g[H + j])), o = 1 / (1 + exp(-g[3 * H + j]))
+                            c[j] = f * c[j] + i * tanh(g[2 * H + j])
+                            h[j] = o * tanh(c[j])
+                        }
+                    }
+                }
+            }
+            input = s.h[l]
+        }
+        gemv(projW, input, projB, rows: H, into: &s.dec)
     }
 
     /// enc: [T * 640] projected encoder frames.
     public func decode(_ enc: [Float], frames T: Int) -> [Int] {
         let H = Self.hidden, outRows = headB.count
-        var state = [(h: [Float], c: [Float])](repeating: ([Float](repeating: 0, count: H), [Float](repeating: 0, count: H)), count: 2)
-        var dec = step(blank, &state)
+        let s = Scratch(logitCount: outRows)
+        step(blank, s)
         var t = 0, sym = 0, out: [Int] = []
-        var joint = [Float](repeating: 0, count: H)
         while t < T {
-            for j in 0..<H { joint[j] = max(enc[t * H + j] + dec[j], 0) }
-            let logits = gemv(headW, joint, headB, rows: outRows)
-            let tok = argmax(logits, 0, vocabSize)
-            var d = durations[argmax(logits, vocabSize, outRows) - vocabSize]
+            enc.withUnsafeBufferPointer { e in
+                s.dec.withUnsafeBufferPointer { d in
+                    s.joint.withUnsafeMutableBufferPointer { jn in
+                        let base = t * H
+                        for j in 0..<H { jn[j] = max(e[base + j] + d[j], 0) }
+                    }
+                }
+            }
+            gemv(headW, s.joint, headB, rows: outRows, into: &s.logits)
+            let tok = argmax(s.logits, 0, vocabSize)
+            var d = durations[argmax(s.logits, vocabSize, outRows) - vocabSize]
             if tok == blank {
                 t += max(d, 1); sym = 0
             } else {
-                out.append(tok); dec = step(tok, &state); sym += 1
+                out.append(tok); step(tok, s); sym += 1
                 if d == 0 && sym >= maxSymbols { d = 1 }
                 if d > 0 { sym = 0 }
                 t += d
@@ -115,13 +159,18 @@ public final class Decoder {
     }
 
     private func argmax(_ a: [Float], _ lo: Int, _ hi: Int) -> Int {
-        var best = lo
-        for i in (lo + 1)..<hi where a[i] > a[best] { best = i }
-        return best
+        a.withUnsafeBufferPointer { p in
+            var best = lo
+            for i in (lo + 1)..<hi where p[i] > p[best] { best = i }
+            return best
+        }
     }
 
     public func detokenize(_ ids: [Int]) -> String {
-        ids.filter { !special.contains($0) && $0 < pieces.count }.map { pieces[$0] }.joined()
+        // Drop specials and every <|...|> control piece (emo tags, pnc/itn prompts, <unk> for quotes):
+        // the model's control vocabulary must never reach the clipboard literally.
+        ids.filter { !special.contains($0) && $0 < pieces.count && !pieces[$0].hasPrefix("<|") && pieces[$0] != "<unk>" }
+            .map { pieces[$0] }.joined()
             .replacingOccurrences(of: "▁", with: " ").trimmingCharacters(in: .whitespaces)
     }
 }
