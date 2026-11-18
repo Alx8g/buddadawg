@@ -67,6 +67,7 @@ final class App: NSObject, NSApplicationDelegate {
     /// Butter Dog easter egg: a dictated meme phrase plays the GIF bottom-centre.
     let memePanel = MemePanel()
     private var partialTimer: Timer?
+    private var vaultPruneTimer: Timer?
     private var partialTail: Task<Void, Never>?
     private var partialBusy = false
     private var partialEpoch = 0
@@ -107,6 +108,9 @@ final class App: NSObject, NSApplicationDelegate {
         Snippets.ensureFile()
         AppRules.ensureFile()
         DispatchQueue.global(qos: .utility).async { AudioVault.prune() }
+        vaultPruneTimer = Timer.scheduledTimer(withTimeInterval: 60 * 60, repeats: true) { _ in
+            DispatchQueue.global(qos: .utility).async { AudioVault.prune() }
+        }
         buildMenu()
         overlay.level = { [recorder] in recorder.level }
         if CommandLine.arguments.contains("--demo") { runDemo() }

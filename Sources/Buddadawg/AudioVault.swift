@@ -84,7 +84,12 @@ enum AudioVault {
     }
 
     /// All stored recordings, newest first. A missing directory is simply an empty vault.
-    static func entries() -> [Entry] { lock.withLock { entriesLocked() } }
+    static func entries() -> [Entry] {
+        lock.withLock {
+            pruneLocked(now: Date())
+            return entriesLocked()
+        }
+    }
 
     /// Total bytes currently held by the vault, for a menu/settings readout.
     static func totalSizeBytes() -> Int64 { entries().reduce(0) { $0 + $1.sizeBytes } }
