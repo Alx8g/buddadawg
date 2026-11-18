@@ -27,7 +27,7 @@ enum AudioProbe {
         }
         defer { AudioHardwareDestroyProcessTap(tapID) }
 
-        guard let aggregateID = makeAggregate(tapID: tapID) else {
+        guard let aggregateID = makeAggregate(tapUUID: tapDescription.uuid) else {
             log("probe: aggregate device creation failed")
             return nil
         }
@@ -63,27 +63,19 @@ enum AudioProbe {
         return box.peak
     }
 
-    /// Aggregate device wrapping the tap, mirroring Apple's process-tap recipe.
-    private static func makeAggregate(tapID: AudioObjectID) -> AudioObjectID? {
-        var defaultOutput = AudioDeviceID(kAudioObjectUnknown)
-        var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
-                                              mScope: kAudioObjectPropertyScopeGlobal,
-                                              mElement: kAudioObjectPropertyElementMain)
-        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
-        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &defaultOutput) == noErr else { return nil }
-        var uid: CFString = "" as CFString
-        addr.mSelector = kAudioDevicePropertyDeviceUID
-        size = UInt32(MemoryLayout<CFString>.size)
-        guard withUnsafeMutablePointer(to: &uid, { AudioObjectGetPropertyData(defaultOutput, &addr, 0, nil, &size, $0) }) == noErr else { return nil }
-
+    /// Tap-only aggregate device: taps join by UUID through the tap list. No physical
+    /// sub-device, so a duplex output's microphone can't be measured as playback.
+    private static func makeAggregate(tapUUID: UUID) -> AudioObjectID? {
         let description: [String: Any] = [
             kAudioAggregateDeviceNameKey: "buddadawg-probe",
             kAudioAggregateDeviceUIDKey: "buddadawg-probe-\(UUID().uuidString)",
             kAudioAggregateDeviceIsPrivateKey: 1,
             kAudioAggregateDeviceIsStackedKey: 0,
             kAudioAggregateDeviceTapAutoStartKey: 1,
-            kAudioAggregateDeviceMainSubDeviceKey: uid,
-            kAudioAggregateDeviceSubDeviceListKey: [tapID],
+            kAudioAggregateDeviceTapListKey: [[
+                kAudioSubTapDriftCompensationKey: 1,
+                kAudioSubTapUIDKey: tapUUID.uuidString,
+            ]],
         ]
         var aggregateID = AudioObjectID(kAudioObjectUnknown)
         guard AudioHardwareCreateAggregateDevice(description as CFDictionary, &aggregateID) == noErr else { return nil }

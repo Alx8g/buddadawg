@@ -26,6 +26,7 @@ final class MediaPauser {
     private var method: Method = .mediaRemote
     private var browserPausedByUs = false  // browser video has no Now Playing session; toggled via media key
     private var session = 0  // pause ownership: a resume only counts for the session that paused
+    private var lastResumedSession = 0  // newest session whose dictation has finished and asked to resume
     private let lock = NSLock()
 
     // MediaRemote (private framework, resolved at runtime so nothing breaks if it moves).
@@ -141,6 +142,7 @@ final class MediaPauser {
     func resumeIfPausedByUs(session mine: Int) {
         var didBrowser = false
         let (wasPaused, via): (Bool, Method) = lock.withLock {
+            lastResumedSession = max(lastResumedSession, mine)
             if browserPausedByUs, session == mine { browserPausedByUs = false; didBrowser = true }
             guard pausedByUs, session == mine else { return (false, method) }
             let v = (pausedByUs, method); pausedByUs = false; return v
@@ -160,10 +162,10 @@ final class MediaPauser {
             if let send = sendCommandFn, send(0, nil) {  // kMRPlay: harmless if already playing
                 log("media: resumed via MediaRemote")
             } else {
-                Self.resumeToggle(what: "media key (MediaRemote play failed)")
+                resumeToggle(what: "media key (MediaRemote play failed)", session: mine)
             }
         case .mediaKey:
-            Self.resumeToggle(what: "media key")
+            resumeToggle(what: "media key", session: mine)
         }
     }
 
@@ -293,19 +295,34 @@ final class MediaPauser {
     /// when nothing else holds the output device — otherwise we'd pause whatever the
     /// user started meanwhile. If something transient (a notification sound) is
     /// holding output right now, retry once after a few seconds.
-    private static func resumeToggle(what: String) {
-        if !outputIsRunning() {
-            postPlayPauseKey()
-            log("media: resumed via \(what)")
-            return
+    private func resumeToggle(what: String, session mine: Int) {
+        let deferred = lock.withLock { () -> Bool in
+            guard session == mine else { return false }
+            if !Self.outputIsRunning() {
+                Self.postPlayPauseKey()
+                log("media: resumed via \(what)")
+                return false
+            }
+            return true
         }
+        guard deferred else { return }
         log("media: output already running; \(what) resume deferred 3 s")
-        DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
-            if !outputIsRunning() {
-                postPlayPauseKey()
-                log("media: resumed via \(what) (deferred)")
-            } else {
-                log("media: output still running; \(what) resume dropped")
+        DispatchQueue.global().asyncAfter(deadline: .now() + 3) { [self] in
+            lock.withLock {
+                // A newer dictation started during the wait. Its pause query sees nothing
+                // playing (we paused it), so hand it this pause and let its finish resume.
+                // If that dictation already finished, nobody is left to resume: do it now.
+                if session != mine, lastResumedSession < session {
+                    if !pausedByUs && !browserPausedByUs { pausedByUs = true; method = .mediaKey }
+                    log("media: newer dictation started; \(what) resume handed to session \(session)")
+                    return
+                }
+                if !Self.outputIsRunning() {
+                    Self.postPlayPauseKey()
+                    log("media: resumed via \(what) (deferred)")
+                } else {
+                    log("media: output still running; \(what) resume dropped")
+                }
             }
         }
     }

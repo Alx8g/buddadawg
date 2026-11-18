@@ -67,6 +67,7 @@ final class App: NSObject, NSApplicationDelegate {
     /// Butter Dog easter egg: a dictated meme phrase plays the GIF bottom-centre.
     let memePanel = MemePanel()
     private var partialTimer: Timer?
+    private var vaultPruneTimer: Timer?
     private var partialTail: Task<Void, Never>?
     private var partialBusy = false
     private var partialEpoch = 0
@@ -107,6 +108,9 @@ final class App: NSObject, NSApplicationDelegate {
         Snippets.ensureFile()
         AppRules.ensureFile()
         DispatchQueue.global(qos: .utility).async { AudioVault.prune() }
+        vaultPruneTimer = Timer.scheduledTimer(withTimeInterval: 60 * 60, repeats: true) { _ in
+            DispatchQueue.global(qos: .utility).async { AudioVault.prune() }
+        }
         buildMenu()
         overlay.level = { [recorder] in recorder.level }
         if CommandLine.arguments.contains("--demo") { runDemo() }
@@ -401,7 +405,7 @@ final class App: NSObject, NSApplicationDelegate {
     /// re-transcription, so both get identical ordering, formatting and paste behaviour.
     /// Chains behind `transcriptionTail` so results always paste in request order.
     /// `epoch` resumes that dictation's media pause (nil when nothing was paused, e.g.
-    /// re-transcription); `vaultEntry` is deleted only after a successful delivery.
+    /// re-transcription); `vaultEntry` is retained because synthetic paste has no delivery acknowledgement.
     @discardableResult
     func transcribeAndDeliver(audio: [Float], send: Bool, secureInput: Bool, epoch: Int?,
                               saveToVault: Bool, vaultEntry: AudioVault.Entry? = nil,
@@ -467,7 +471,10 @@ final class App: NSObject, NSApplicationDelegate {
                     armedUntil = Date().addingTimeInterval(Self.armedWindow)
                     overlay.show(.pasted)
                     setStatus(readyStatus)
-                    if let vaultEntry { AudioVault.delete(vaultEntry); refreshVaultMenu() }
+                    if vaultEntry != nil {
+                        refreshVaultMenu()
+                        setStatus("Re-transcribed — audio kept for recovery")
+                    }
                 }
             } catch {
                 log("transcription failed: \(error.localizedDescription)")
@@ -535,7 +542,14 @@ final class App: NSObject, NSApplicationDelegate {
             return
         }
         overlay.show(.transcribing)
-        Task { [self] in
+        transcriptionInFlight = true
+        let previous = transcriptionTail
+        transcriptionTail = Task { [self] in
+            // Same ordering as transcribeAndDeliver: AsrManager isn't documented
+            // reentrant, so wait for earlier final and partial decodes to drain.
+            _ = await previous?.result
+            _ = await partialTail?.result
+            defer { Task { @MainActor in self.transcriptionInFlight = false } }
             do {
                 let sttStart = Date()
                 let raw = try await cleanTranscriber.transcribe(audio)
@@ -651,7 +665,7 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     /// "Stored Audio" submenu: each vault WAV re-transcribes through the loaded engine
-    /// and pastes the result (the file is deleted only on success — it is the recovery
+    /// and pastes the result (the file is retained — it is the recovery
     /// copy until then). Newest first, capped so the menu stays usable.
     func refreshStoredAudioMenu() {
         guard storedMenu != nil else { return }

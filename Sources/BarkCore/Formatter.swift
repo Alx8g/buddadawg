@@ -131,12 +131,21 @@ public enum DictationFormatter {
                 continue
             }
             guard !parts.isEmpty, parts.allSatisfy(isNumberish) else { break }
+            // A hyphenated token is all-or-nothing: if any part rejects, undo the parts
+            // already applied so "one hundred-point" doesn't count "hundred" twice.
+            let saved = (total, current, fraction, strong, inFraction, state)
             var tokenWords = 0
             var rejected = false
-            for w in parts {
+            for (partIndex, w) in parts.enumerated() {
                 if inFraction {
                     guard let d = ones[w], d < 10 else { rejected = true; break }
                     fraction += String(d); tokenWords += 1; continue
+                }
+                if w == "point" {
+                    let nextWord = partIndex + 1 < parts.count ? parts[partIndex + 1]
+                        : (suffix(tokens[i]).contains(where: { ".!?".contains($0) }) || i + 1 >= tokens.count
+                           ? nil : numberWords(tokens[i + 1]).first)
+                    guard let nextWord, let digit = ones[nextWord], digit < 10 else { rejected = true; break }
                 }
                 guard let next = accepts(state, w) else { rejected = true; break }
                 state = next
@@ -153,10 +162,14 @@ public enum DictationFormatter {
                     total += current * Double(v); current = 0; strong = true
                 }
             }
-            if rejected { break }  // this token starts something else (or the next counted number)
+            if rejected {  // this token starts something else (or the next counted number)
+                (total, current, fraction, strong, inFraction, state) = saved
+                break
+            }
             words += tokenWords
             saw = true
             i += 1
+            if suffix(tokens[i - 1]).contains(where: { ".!?".contains($0) }) { break }
         }
         guard saw else { return nil }
         return finish(total + current, fraction: fraction, consumed: i - start, words: words, strong: strong)

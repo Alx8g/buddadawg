@@ -49,12 +49,12 @@ enum RewriteEngine {
         guard #available(macOS 26.0, *), isAvailable, !text.isEmpty else { return nil }
         // Prefill scales with input length; 8000 chars covers very long dictations
         // while keeping prefill ~1-2 s. Output cap allows ~3x expansion headroom.
-        let clipped = text.count > 8000 ? String(text.prefix(8000)) : text
+        guard text.count <= 8000 else { return nil }
         let prompt = """
         \(cleanupInstructions)
 
         Text:
-        \(clipped)
+        \(text)
         """
         do {
             if #available(macOS 26.0, *) {
@@ -76,7 +76,10 @@ enum RewriteEngine {
         // token-priced on the Neural Engine. 3000 chars keeps prefill ~1 s; the
         // response cap below bounds generation so a "make it longer" command on a
         // huge selection can't run away for 15 s.
-        let clipped = text.count > 3000 ? String(text.prefix(3000)) : text
+        guard text.count <= 3000 else {
+            throw NSError(domain: "Buddadawg", code: 11,
+                          userInfo: [NSLocalizedDescriptionKey: "Selection is too long — select at most 3000 characters"])
+        }
         let session = LanguageModelSession()
         let prompt = """
         \(instructions)
@@ -84,7 +87,7 @@ enum RewriteEngine {
         Command: \(command)
 
         Text:
-        \(clipped)
+        \(text)
         """
         // Greedy decoding: deterministic and a touch faster than sampling — right
         // trade for a rewrite task. 1024 tokens covers ~4k chars of output.
@@ -102,4 +105,3 @@ enum RewriteEngine {
         return try await rewrite(text, command: command)
     }
 }
-
