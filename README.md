@@ -31,7 +31,7 @@ The install downloads ~640 MB of models and pre-compiles them for the Neural Eng
 - Spoken edits while dictating: **"scratch that"** (alone) discards the utterance, **"new paragraph"** / **"new line"** at the end of a phrase insert breaks, **"bullet point …"** at the start prefixes a bullet, and words like **"comma"**, **"question mark"**, **"open quote"** insert punctuation.
 - While you talk, a floating HUD shows a live partial transcript (re-decoded ~every 2 s); the final pass on fn release is still authoritative.
 - Dictating music pauses it while you talk — **Music, Spotify, and browser video** (including WebKit browsers, via the media key) — and resumes it after; only playback Buddadawg paused is resumed. Toggle with **Pause Media While Dictating**.
-- **Keep Audio for Recovery** (menu bar, off by default) stores the last dictations as local WAVs for 7 days. **Stored Audio** re-transcribes one through the loaded engine and pastes it — the file is only deleted on success. **Delete Stored Audio** wipes the vault.
+- **Keep Audio for Recovery** (menu bar, off by default) stores the last dictations as local WAVs for 7 days. **Stored Audio** re-transcribes one through the loaded engine and pastes it — the file is kept because paste delivery cannot be confirmed. **Delete Stored Audio** wipes the vault.
 - Fix words two ways: select the correct spelling in any app → **Add Selection to Dictionary…**, or edit `~/.config/buddadawg/dictionary` directly via **Edit Dictionary…** (`tail scale => Tailscale`), seeded on first launch.
 - Menu bar → **Recent Dictations** re-pastes a recent result (handy when a paste missed).
 - Any other key while fn is held cancels (fn + key is a shortcut, not dictation); typing after a tap does not.
