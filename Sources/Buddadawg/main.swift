@@ -59,11 +59,16 @@ final class App: NSObject, NSApplicationDelegate {
     /// local LLM cleanup pass before pasting. The model pre-warms while the user
     /// speaks so the pass overlaps nothing.
     private var smartDictation = false
-    /// Triple-tap detection: tap1 starts a normal dictation, tap2 stops it (~0.5 s of
-    /// silence), tap3's fnDown lands here. A "dictation" under 0.8 s whose finish is
-    /// followed within ~1.2 s by another fn press is treated as the gesture.
+    /// Triple-tap detection: tap1 starts a normal dictation, tap2 stops it (~0.5-1.2 s
+    /// of silence), tap3's fnDown lands here. The gesture's "dictation" must be short,
+    /// SILENT (peak < 0.02 — room tone; speech peaks are 0.03+), and recent. Speech in
+    /// the clip means it was a real dictation, not gesture taps.
     private var lastDictationSeconds: Double = .infinity
+    private var lastDictationPeak: Float = 1
     private var lastDictationEnd = Date.distantPast
+    /// After Smart Dictation triggers, extra fn taps inside this window must not
+    /// re-trigger it — they belong to the gesture, not new dictations.
+    private var smartCooldownUntil = Date.distantPast
     private var armedUntil = Date.distantPast
     private static let armedWindow: TimeInterval = 6  // double-tap fn this long after a paste re-sends + Enter
     var engineName = ""
@@ -107,9 +112,12 @@ final class App: NSObject, NSApplicationDelegate {
             // user speaks, then fall through to the normal recording path. Without
             // Apple Intelligence it silently degrades to plain dictation.
             if !commandMode, !smartDictation, RewriteEngine.isAvailable,
-               lastDictationSeconds < 0.8,
+               Date() > smartCooldownUntil,
+               lastDictationSeconds < 1.4, lastDictationPeak < 0.02,
                Date().timeIntervalSince(lastDictationEnd) < 1.2 {
                 smartDictation = true
+                smartCooldownUntil = Date().addingTimeInterval(2)
+                overlay.smart = true
                 RewriteEngine.prewarm(prefix: RewriteEngine.cleanupInstructions)
                 log("smart dictation: triple-tap detected")
             }
@@ -146,6 +154,7 @@ final class App: NSObject, NSApplicationDelegate {
                 hotkey.externalCapture = false
                 pendingCommandSelection = nil
                 smartDictation = false
+                overlay.smart = false
                 overlay.show(.cancelled)
                 setStatus(readyStatus)
                 return
@@ -153,7 +162,9 @@ final class App: NSObject, NSApplicationDelegate {
             log("cancelled by another key")
             _ = recorder.stop()
             smartDictation = false
+            overlay.smart = false
             lastDictationSeconds = .infinity
+            lastDictationPeak = 1
             resumeMedia()
             overlay.show(.cancelled)
         }
@@ -237,7 +248,9 @@ final class App: NSObject, NSApplicationDelegate {
         lastDictationEnd = Date()
         let wasSmart = smartDictation
         smartDictation = false
+        overlay.smart = false
         let stats = recorder.lastStats
+        lastDictationPeak = stats.peak
         let epoch = mediaEpoch
         let secureInput = IsSecureEventInputEnabled()
         if secureInput { log("secure input active: skipping audio vault and recents for this dictation") }
@@ -391,7 +404,9 @@ final class App: NSObject, NSApplicationDelegate {
         let audio = recorder.stop()
         commandMode = false
         hotkey.externalCapture = false
+        overlay.smart = false
         lastDictationSeconds = .infinity
+        lastDictationPeak = 1
         let selection = pendingCommandSelection
         pendingCommandSelection = nil
         guard audio.count > 1600, let cleanTranscriber, let selection else {

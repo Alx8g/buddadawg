@@ -11,6 +11,9 @@ final class Overlay: NSObject, MTKViewDelegate {
     enum State { case hidden, listening, transcribing, pasted, cancelled }
 
     var level: () -> Float = { 0 }
+    /// Smart Dictation (triple-tap fn): tints the listening glow warm so the gesture
+    /// is visible — without it the mode is indistinguishable from plain dictation.
+    var smart = false
     static let height: CGFloat = 240  // the glow fades to zero well before the top, so no edge is ever visible
     /// Under Reduced Motion the phase clock (shafts, peaks, wander, grain stepping) advances at this
     /// fraction of real time. State timings (`sinceState`) stay real-time so feedback still completes.
@@ -33,7 +36,7 @@ final class Overlay: NSObject, MTKViewDelegate {
     private var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
     // `reduce` is 1 under Reduced Motion (the shader uses it to still the film grain).
-    private struct Uniforms { var res: SIMD2<Float>; var dpr, t, lvl, show, ph, swell, tShaft, tBump, reduce: Float; var s: SIMD4<Float> }
+    private struct Uniforms { var res: SIMD2<Float>; var dpr, t, lvl, show, ph, swell, tShaft, tBump, reduce, smart: Float; var s: SIMD4<Float> }
 
     override init() {
         panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 800, height: Self.height),
@@ -149,7 +152,8 @@ final class Overlay: NSObject, MTKViewDelegate {
         let scale = Float(view.drawableSize.width / max(view.bounds.width, 1))
         var u = Uniforms(res: SIMD2(Float(view.bounds.width), Float(view.bounds.height)), dpr: scale, t: phases.time,
                          lvl: smoothed, show: visibility, ph: sinceState, swell: swell,
-                         tShaft: phases.shaftTime, tBump: phases.bumpTime, reduce: reduceMotion ? 1 : 0, s: weights)
+                         tShaft: phases.shaftTime, tBump: phases.bumpTime, reduce: reduceMotion ? 1 : 0,
+                         smart: smart ? 1 : 0, s: weights)
         enc.setRenderPipelineState(pipeline)
         enc.setFragmentBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -163,7 +167,7 @@ final class Overlay: NSObject, MTKViewDelegate {
     private static let shader = """
     #include <metal_stdlib>
     using namespace metal;
-    struct U { float2 res; float dpr, t, lvl, show, ph, swell, tShaft, tBump, reduce; float4 s; };
+    struct U { float2 res; float dpr, t, lvl, show, ph, swell, tShaft, tBump, reduce, smart; float4 s; };
     struct VO { float4 pos [[position]]; };
 
     vertex VO vmain(uint id [[vertex_id]]) {
@@ -228,7 +232,10 @@ final class Overlay: NSObject, MTKViewDelegate {
         G *= (1 - grainAmp * .5) + grainAmp * h21(fc + floor(u.t * 24) * float2(37.1, 17.7));
         G *= 1 - smoothstep(R.y * .4, R.y * .92, y);                                        // fade to zero before the panel top
         G = clamp(G, 0.0, 1.0);
-        return float4(G, G, G, G * .85);
+        // Smart Dictation tints only the listening glow (s.x) warm amber; every other
+        // state keeps the neutral white so pasted/transcribing feedback is unchanged.
+        float3 tint = mix(float3(1.0), float3(1.0, 0.78, 0.45), u.smart * u.s.x);
+        return float4(G * tint, G * .85);
     }
     """
 }
