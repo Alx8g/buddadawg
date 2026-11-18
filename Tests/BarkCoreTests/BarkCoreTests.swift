@@ -62,6 +62,8 @@ import Testing
     #expect(DictationFormatter.format("one point. five dollars") == "One point. 5 dollars")
     #expect(DictationFormatter.format("one point five") == "1.5")
     #expect(DictationFormatter.format("one point five. six dollars") == "1.5. 6 dollars")
+    #expect(DictationFormatter.format("one hundred-point scale") == "One hundred-point scale")
+    #expect(DictationFormatter.format("two hundred-point five") == "200.5")
     #expect(DictationFormatter.format("") == "")
 }
 

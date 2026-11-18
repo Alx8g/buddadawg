@@ -131,6 +131,9 @@ public enum DictationFormatter {
                 continue
             }
             guard !parts.isEmpty, parts.allSatisfy(isNumberish) else { break }
+            // A hyphenated token is all-or-nothing: if any part rejects, undo the parts
+            // already applied so "one hundred-point" doesn't count "hundred" twice.
+            let saved = (total, current, fraction, strong, inFraction, state)
             var tokenWords = 0
             var rejected = false
             for (partIndex, w) in parts.enumerated() {
@@ -159,7 +162,10 @@ public enum DictationFormatter {
                     total += current * Double(v); current = 0; strong = true
                 }
             }
-            if rejected { break }  // this token starts something else (or the next counted number)
+            if rejected {  // this token starts something else (or the next counted number)
+                (total, current, fraction, strong, inFraction, state) = saved
+                break
+            }
             words += tokenWords
             saw = true
             i += 1
