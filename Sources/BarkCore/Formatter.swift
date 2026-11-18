@@ -133,10 +133,16 @@ public enum DictationFormatter {
             guard !parts.isEmpty, parts.allSatisfy(isNumberish) else { break }
             var tokenWords = 0
             var rejected = false
-            for w in parts {
+            for (partIndex, w) in parts.enumerated() {
                 if inFraction {
                     guard let d = ones[w], d < 10 else { rejected = true; break }
                     fraction += String(d); tokenWords += 1; continue
+                }
+                if w == "point" {
+                    let nextWord = partIndex + 1 < parts.count ? parts[partIndex + 1]
+                        : (suffix(tokens[i]).contains(where: { ".!?".contains($0) }) || i + 1 >= tokens.count
+                           ? nil : numberWords(tokens[i + 1]).first)
+                    guard let nextWord, let digit = ones[nextWord], digit < 10 else { rejected = true; break }
                 }
                 guard let next = accepts(state, w) else { rejected = true; break }
                 state = next
@@ -157,6 +163,7 @@ public enum DictationFormatter {
             words += tokenWords
             saw = true
             i += 1
+            if suffix(tokens[i - 1]).contains(where: { ".!?".contains($0) }) { break }
         }
         guard saw else { return nil }
         return finish(total + current, fraction: fraction, consumed: i - start, words: words, strong: strong)

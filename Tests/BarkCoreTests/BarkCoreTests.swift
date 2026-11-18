@@ -54,6 +54,17 @@ import Testing
     #expect(DictationFormatter.format("at three forty-five p. m. send it") == "At 3:45 pm send it")
 }
 
+@Test func numbersRespectSentenceBoundariesAndIncompleteDecimals() {
+    #expect(DictationFormatter.format("twenty. five dollars") == "Twenty. 5 dollars")
+    #expect(DictationFormatter.format("twenty! five dollars") == "Twenty! 5 dollars")
+    #expect(DictationFormatter.format("twenty? five dollars") == "Twenty? 5 dollars")
+    #expect(DictationFormatter.format("one point") == "One point")
+    #expect(DictationFormatter.format("one point. five dollars") == "One point. 5 dollars")
+    #expect(DictationFormatter.format("one point five") == "1.5")
+    #expect(DictationFormatter.format("one point five. six dollars") == "1.5. 6 dollars")
+    #expect(DictationFormatter.format("") == "")
+}
+
 @Test func singleNumberWordsAreLeftAlone() {
     #expect(DictationFormatter.format("one of these days two things happen") == "One of these days two things happen")
     #expect(DictationFormatter.format("it costs five dollars") == "It costs 5 dollars")
