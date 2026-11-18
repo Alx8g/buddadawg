@@ -542,7 +542,14 @@ final class App: NSObject, NSApplicationDelegate {
             return
         }
         overlay.show(.transcribing)
-        Task { [self] in
+        transcriptionInFlight = true
+        let previous = transcriptionTail
+        transcriptionTail = Task { [self] in
+            // Same ordering as transcribeAndDeliver: AsrManager isn't documented
+            // reentrant, so wait for earlier final and partial decodes to drain.
+            _ = await previous?.result
+            _ = await partialTail?.result
+            defer { Task { @MainActor in self.transcriptionInFlight = false } }
             do {
                 let sttStart = Date()
                 let raw = try await cleanTranscriber.transcribe(audio)
