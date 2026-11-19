@@ -31,6 +31,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>LSUIElement</key><true/>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>NSMicrophoneUsageDescription</key><string>Buddadawg listens only between fn taps, and transcribes on this Mac.</string>
+  <key>NSAudioCaptureUsageDescription</key><string>Buddadawg measures whether a video is really playing, so it can pause and resume it around a dictation instead of toggling playback blindly.</string>
 </dict></plist>
 PLIST
 

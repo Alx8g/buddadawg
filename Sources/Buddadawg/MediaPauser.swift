@@ -25,6 +25,7 @@ final class MediaPauser {
     private var pausedByUs = false
     private var method: Method = .mediaRemote
     private var browserPausedByUs = false  // browser video has no Now Playing session; toggled via media key
+    private var browserPausedAt: Date?  // when the browser toggle-pause was sent (too new to judge by probe)
     private var session = 0  // pause ownership: a resume only counts for the session that paused
     private var lastResumedSession = 0  // newest session whose dictation has finished and asked to resume
     private let lock = NSLock()
@@ -95,29 +96,43 @@ final class MediaPauser {
             } else if (pidNow ?? 0) > 0 || playingNow != nil || halMedia {
                 log("media: not playing (isPlaying=\(String(describing: playingNow)), pid=\(String(describing: pidNow)), outputRunning=\(outputRunning), hal=[\(halDesc)]); leaving playback alone")
             }
-            // Browser video (e.g. Frame.io in Helium) registers no Now Playing session, so
-            // MediaRemote stays empty — but the browser's helper process holds output audio
-            // while a video actually plays. The media-key toggle is the only control that
-            // reaches it; sent once here and once on resume.
+            // Browser video (e.g. Frame.io in ZigZag/Helium) registers no Now Playing
+            // session, so MediaRemote stays empty — but the browser's helper process holds
+            // output audio while a video actually plays. The media-key toggle is the only
+            // control that reaches it; sent once here and once on resume.
             // Veto: a browser that DOES publish a Now Playing session (Chrome+YouTube)
             // can say "not playing" outright — trust that over the laggy HAL signal.
-            // Helium/Frame.io publish nothing, so pid==0 there and the HAL path stays.
+            // ZigZag/Frame.io publish nothing, so pid==0 there and the HAL path stays.
             var npPausedBrowser = false
             if let npPid = pidNow, npPid > 0, playingNow == false,
                let app = NSRunningApplication(processIdentifier: pid_t(npPid)),
                let bid = app.bundleIdentifier {
                 npPausedBrowser = Self.browserBundles.contains { bid.hasPrefix($0) }
             }
-            if !playing, !npPausedBrowser, Self.browserVideoLikelyPlaying() {
-                var claimed = false
-                lock.withLock {
-                    if !browserPausedByUs && !pausedByUs { browserPausedByUs = true; claimed = true }
-                }
-                if claimed {
-                    Self.postPlayPauseKey()
-                    log("media: browser video toggle-pause (hal=[\(halDesc)])")
-                } else {
-                    log("media: already paused by us; skipping duplicate browser toggle")
+            if !playing, !npPausedBrowser {
+                // Never toggle on the HAL flag alone: a paused video keeps its helper
+                // flagged as running output, and the media key is a blind TOGGLE — that is
+                // what unpaused videos the user had paused. Only real PCM audio justifies
+                // the key press.
+                switch Self.browserAudio() {
+                case .playing:
+                    var claimed = false
+                    lock.withLock {
+                        if !browserPausedByUs && !pausedByUs { browserPausedByUs = true; claimed = true }
+                    }
+                    if claimed {
+                        Self.postPlayPauseKey()
+                        lock.withLock { browserPausedAt = Date() }
+                        log("media: browser video toggle-pause (hal=[\(halDesc)])")
+                    } else {
+                        log("media: already paused by us; skipping duplicate browser toggle")
+                    }
+                case .silent:
+                    log("media: browser output silent (video paused); leaving playback alone")
+                case .noProcess:
+                    break  // nothing browser-owned holds the output device
+                case .unknown:
+                    log("media: browser audio unverifiable; not toggling playback")
                 }
             } else if !playing, npPausedBrowser {
                 log("media: browser helper output present but vetoed (npPausedBrowser=true)")
@@ -141,20 +156,41 @@ final class MediaPauser {
     /// has started since. Safe to call repeatedly.
     func resumeIfPausedByUs(session mine: Int) {
         var didBrowser = false
+        var browserHeldFor: TimeInterval = 0
         let (wasPaused, via): (Bool, Method) = lock.withLock {
             lastResumedSession = max(lastResumedSession, mine)
-            if browserPausedByUs, session == mine { browserPausedByUs = false; didBrowser = true }
+            if browserPausedByUs, session == mine {
+                browserPausedByUs = false
+                didBrowser = true
+                browserHeldFor = browserPausedAt.map { Date().timeIntervalSince($0) } ?? .infinity
+                browserPausedAt = nil
+            }
             guard pausedByUs, session == mine else { return (false, method) }
             let v = (pausedByUs, method); pausedByUs = false; return v
         }
         if didBrowser {
-            // Browser video is toggle-controlled: the pause and resume toggles are a
-            // pair, so the resume must fire unconditionally. Gating on outputIsRunning
-            // broke both ways — a paused WebKit helper keeps the output device flagged
-            // running, which dropped every resume AND let a manual pause get toggled
-            // into playback with no way back.
-            Self.postPlayPauseKey()
-            log("media: browser video toggle-resume")
+            // Browser video is toggle-controlled, so the pause and resume toggles are a
+            // pair: the resume must fire even though a paused WebKit helper keeps the
+            // output device flagged running. A very short dictation can't have had the
+            // user restart playback, and the pause's own fade-out still reads as audio,
+            // so skip the probe and re-toggle; for longer ones, only skip the resume when
+            // the probe shows the video is already playing again or gone entirely.
+            if browserHeldFor < 2 {
+                Self.postPlayPauseKey()
+                log("media: browser video toggle-resume (paired, \(String(format: "%.1f", browserHeldFor)) s)")
+                return
+            }
+            DispatchQueue.global().async {
+                switch Self.browserAudio() {
+                case .playing:
+                    log("media: browser video already playing; skipping toggle-resume")
+                case .noProcess:
+                    log("media: browser video gone; skipping toggle-resume")
+                case .silent, .unknown:
+                    Self.postPlayPauseKey()
+                    log("media: browser video toggle-resume")
+                }
+            }
         }
         guard wasPaused else { return }
         switch via {
@@ -183,31 +219,37 @@ final class MediaPauser {
         "io.mpv", "com.amazon.Lassen", "com.netflix.Netflix", "com.disney.disneyplus",
     ]
 
+    /// What browser-owned audio is doing right now, as far as the HAL and a PCM probe
+    /// can tell. The HAL flag alone is useless for this: a paused video keeps its
+    /// WebKit helper flagged as running output indefinitely.
+    private enum BrowserAudio {
+        case playing      // the probe measured real sound
+        case silent       // a browser holds the device but emits nothing (video paused)
+        case noProcess    // no browser is holding output audio at all
+        case unknown      // the probe could not be set up (permissions, older OS)
+    }
+
     /// A known browser's process (main or .helper — Chromium runs media audio through helper
-    /// processes) is running output audio while nothing else claims playback. Browser video
-    /// registers no Now Playing session, so this audio-output signal is the only tell. The
-    /// helper's output lags real playback by ~10s, so a just-paused video can still read as
-    /// "playing" for a moment; the toggle pair self-corrects on resume. Deliberately not
-    /// gated on the browser being frontmost — dictating into another app shouldn't leave
-    /// the video blaring.
-    private static func browserVideoLikelyPlaying() -> Bool {
-        // Candidates: browser-owned processes flagged as running output. The flag
-        // alone can't tell "playing" from "paused but holding the device open", so
-        // confirm with a real PCM probe; if the probe is unavailable (nil), trust
-        // the flag as before.
+    /// processes) is holding output audio while nothing else claims playback. Browser video
+    /// registers no Now Playing session, so the PCM probe is the only tell, and it must be
+    /// conclusive: `.unknown` is never treated as "playing", because toggling a video the
+    /// user paused is far worse than leaving a playing one alone. Deliberately not gated on
+    /// the browser being frontmost — dictating into another app shouldn't leave a video
+    /// blaring.
+    private static func browserAudio() -> BrowserAudio {
         let candidates = outputProcesses().filter { proc in
             let bundle = resolvedBundle(pid: proc.pid, bundle: proc.bundle)
             return browserBundles.contains { base in
                 bundle == base || bundle.hasPrefix(base + ".helper")
             }
         }
-        guard !candidates.isEmpty else { return false }
+        guard !candidates.isEmpty else { return .noProcess }
         guard let peak = AudioProbe.outputPeak(processObjectIDs: candidates.map(\.obj)) else {
-            return true
+            return .unknown
         }
         let playing = peak > 0.005
         log("media: browser probe peak=\(String(format: "%.4f", peak)) -> \(playing ? "playing" : "silent")")
-        return playing
+        return playing ? .playing : .silent
     }
 
     /// WebKit browsers (Safari, ZigZag, Orion…) play media audio through shared
