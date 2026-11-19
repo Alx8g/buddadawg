@@ -170,11 +170,13 @@ final class MediaPauser {
         }
         if didBrowser {
             // Browser video is toggle-controlled, so the pause and resume toggles are a
-            // pair: the resume must fire even though a paused WebKit helper keeps the
-            // output device flagged running. A very short dictation can't have had the
-            // user restart playback, and the pause's own fade-out still reads as audio,
-            // so skip the probe and re-toggle; for longer ones, only skip the resume when
-            // the probe shows the video is already playing again or gone entirely.
+            // pair: the resume must fire even though the paused tab has released the output
+            // device (the common case — a paused video stops being flagged as running
+            // output, which is not evidence that it went away). A very short dictation
+            // can't have had the user restart playback either, and the pause's own fade-out
+            // still reads as audio, so re-toggle straight away; for longer ones only skip
+            // the resume when the probe shows playback already running again, or when every
+            // browser is gone and the key press would land on some other app.
             if browserHeldFor < 2 {
                 Self.postPlayPauseKey()
                 log("media: browser video toggle-resume (paired, \(String(format: "%.1f", browserHeldFor)) s)")
@@ -184,11 +186,16 @@ final class MediaPauser {
                 switch Self.browserAudio() {
                 case .playing:
                     log("media: browser video already playing; skipping toggle-resume")
-                case .noProcess:
-                    log("media: browser video gone; skipping toggle-resume")
                 case .silent, .unknown:
                     Self.postPlayPauseKey()
                     log("media: browser video toggle-resume")
+                case .noProcess:
+                    guard Self.browserAppIsRunning() else {
+                        log("media: browser quit during dictation; skipping toggle-resume")
+                        return
+                    }
+                    Self.postPlayPauseKey()
+                    log("media: browser video toggle-resume (paused tab released its output)")
                 }
             }
         }
@@ -279,6 +286,17 @@ final class MediaPauser {
         "com.brave.Browser", "company.diabrowser", "com.kagi.Orion",
         "com.operasoftware.Opera", "com.vivaldi.Vivaldi", "wang.zigao.zigzag",
     ]
+
+    /// Is any browser still installed and running? Used when the HAL list has nothing to
+    /// probe before a paired resume: a paused tab releases the output device, so an empty
+    /// list usually means "the thing we paused", not "the video went away". Only a browser
+    /// that is no longer running at all makes the media key aimless.
+    private static func browserAppIsRunning() -> Bool {
+        NSWorkspace.shared.runningApplications.contains { app in
+            guard !app.isTerminated, let bundle = app.bundleIdentifier else { return false }
+            return browserBundles.contains { bundle.hasPrefix($0) }
+        }
+    }
 
     private static func isMediaBundle(_ bundle: String) -> Bool {
         // ".helper"/".helper.*" processes (browser helpers, rustdesk-style agents) hold audio
